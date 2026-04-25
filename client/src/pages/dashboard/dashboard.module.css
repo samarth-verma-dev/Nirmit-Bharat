@@ -5,15 +5,17 @@
   display: flex;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
-  background-color: #f8fafc;
-  color: #111827;
+  background-color: #f4f5f0;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: #1c231f;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 .sidebar {
   width: 260px;
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  background: transparent;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -30,7 +32,7 @@
 }
 
 .logoIcon {
-  background: #1e1e2f;
+  background: #1F4D3B;
   color: #ffffff;
   font-weight: 700;
   font-size: 14px;
@@ -46,15 +48,15 @@
   font-size: 16px;
   font-weight: 700;
   margin: 0;
-  color: #111827;
+  color: #1c231f;
   letter-spacing: -0.3px;
 }
 
 .logoSub {
   font-size: 11px;
-  color: #6b7280;
+  color: #a07151;
   margin: 2px 0 0;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sidebarNav {
@@ -69,7 +71,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  color: #6b7280;
+  color: #5c6b61;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
@@ -78,13 +80,13 @@
 }
 
 .navItem:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: rgba(31, 77, 59, 0.04);
+  color: #1c231f;
 }
 
 .navItem.active {
-  color: #2563eb;
-  background: #eff6ff;
+  color: #1F4D3B;
+  background: rgba(31, 77, 59, 0.08);
   font-weight: 600;
 }
 
@@ -95,7 +97,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #2563eb;
+  background: #1F4D3B;
   border-radius: 0 4px 4px 0;
 }
 
@@ -109,7 +111,7 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  background: #0052cc;
+  background: #1F4D3B;
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -118,10 +120,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  box-shadow: 0 2px 4px rgba(31, 77, 59, 0.2);
 }
 
 .newAnalysisBtn:hover {
-  background: #0043a8;
+  background: #143528;
 }
 
 /* ── Main Content & Header ──────────────────────────────────── */
@@ -143,14 +146,16 @@
 .searchBar {
   display: flex;
   align-items: center;
-  background: #f1f5f9;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   padding: 10px 16px;
   width: 300px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .searchIcon {
-  color: #9ca3af;
+  color: #a07151;
   margin-right: 12px;
 }
 
@@ -160,19 +165,19 @@
   outline: none;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #111827;
+  color: #1c231f;
   width: 100%;
 }
 
 .searchInput::placeholder {
-  color: #9ca3af;
+  color: #8a968f;
 }
 
 .navTitle {
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-  color: #111827;
+  color: #1c231f;
   letter-spacing: -0.5px;
 }
 
@@ -188,17 +193,17 @@
   background: #ffffff;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .summaryTitle {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: #a07151;
   margin: 0 0 12px;
   letter-spacing: 0.5px;
 }
@@ -212,7 +217,7 @@
 .summaryValue {
   font-size: 32px;
   font-weight: 700;
-  color: #111827;
+  color: #1c231f;
   line-height: 1;
   letter-spacing: -1px;
 }
@@ -220,12 +225,12 @@
 .summaryTrend {
   font-size: 13px;
   font-weight: 600;
-  color: #16a34a;
+  color: #1F4D3B;
 }
 
 .summarySubtext {
   font-size: 13px;
-  color: #9ca3af;
+  color: #8a968f;
   font-weight: 500;
 }
 
@@ -246,13 +251,12 @@
   margin-bottom: 24px;
 }
 
-/* ── Generic Card Styles ────────────────────────────────────── */
 .card {
   background: #ffffff;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   display: flex;
   flex-direction: column;
 }
@@ -267,15 +271,15 @@
 .cardTitle {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: #1c231f;
   margin: 0 0 4px;
 }
 
 .cardSubTitle {
   font-size: 12px;
-  color: #6b7280;
+  color: #a07151;
   margin: 0;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .cardActionIcon {
@@ -302,7 +306,7 @@
 .headerStarVal {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: #1c231f;
 }
 
 .ratingBars {
@@ -326,19 +330,19 @@
 .ratingLabel {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #1c231f;
 }
 
 .ratingVal {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: #a07151;
 }
 
 .ratingTrack {
   width: 100%;
   height: 6px;
-  background: #f1f5f9;
+  background: rgba(31, 77, 59, 0.08);
   border-radius: 99px;
   overflow: hidden;
 }
@@ -346,14 +350,13 @@
 .ratingFillPrimary {
   height: 100%;
   border-radius: 99px;
-  background: #2563eb;
+  background: #1F4D3B;
   transition: width 0.8s ease;
 }
 
-/* ── Line Chart Toggles ─────────────────────────────────────── */
 .timeToggles {
   display: flex;
-  background: #f1f5f9;
+  background: rgba(31, 77, 59, 0.06);
   border-radius: 6px;
   padding: 2px;
 }
@@ -362,13 +365,13 @@
   padding: 4px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: #5c6b61;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .timeToggleActive {
-  background: #2563eb;
+  background: #1F4D3B;
   color: #ffffff;
 }
 
@@ -397,7 +400,7 @@
 .donutPct {
   font-size: 32px;
   font-weight: 700;
-  color: #111827;
+  color: #1c231f;
   line-height: 1;
   letter-spacing: -1px;
 }
@@ -405,7 +408,7 @@
 .donutLabel {
   font-size: 10px;
   font-weight: 700;
-  color: #16a34a;
+  color: #1F4D3B;
   text-transform: uppercase;
   margin-top: 4px;
 }
@@ -422,7 +425,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
-  color: #4b5563;
+  color: #5c6b61;
 }
 
 .legendLeft {
@@ -439,13 +442,13 @@
 
 .legendVal {
   font-weight: 600;
-  color: #111827;
+  color: #1c231f;
 }
 
 /* ── AI Summary Section ─────────────────────────────────────── */
 .aiSummarySection {
-  background: #f4f7fa;
-  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 24px;
 }
@@ -458,7 +461,7 @@
 }
 
 .aiSummaryIcon {
-  background: #0052cc;
+  background: #1F4D3B;
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -470,13 +473,13 @@
 .aiSummaryTitle {
   font-size: 16px;
   font-weight: 600;
-  color: #0052cc;
+  color: #1F4D3B;
   margin: 0 0 2px;
 }
 
 .aiSummarySub {
   font-size: 12px;
-  color: #6b7280;
+  color: #a07151;
   margin: 0;
 }
 
@@ -487,12 +490,12 @@
 }
 
 .aiInsightCard {
-  background: #ffffff;
+  background: rgba(31, 77, 59, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   border-radius: 8px;
   padding: 20px;
   display: flex;
   gap: 16px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .insightIconWrapper {
@@ -502,19 +505,19 @@
 .insightContent h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: #1c231f;
   margin: 0 0 8px;
 }
 
 .insightContent p {
   font-size: 13px;
   line-height: 1.5;
-  color: #6b7280;
+  color: #5c6b61;
   margin: 0;
 }
 
 .insightContent strong {
-  color: #111827;
+  color: #1F4D3B;
 }
 
 /* ── Misc ───────────────────────────────────────────────────── */
@@ -525,12 +528,12 @@
 
 .star {
   font-size: 14px;
-  color: #2563eb;
+  color: #1F4D3B;
 }
 
 .starEmpty {
   font-size: 14px;
-  color: #e5e7eb;
+  color: rgba(31, 77, 59, 0.15);
 }
 
 .customTooltip {

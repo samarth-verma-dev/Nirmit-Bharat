@@ -48,8 +48,18 @@ export default function Admin() {
   // Invite email state
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
-  const [inviteMsg, setInviteMsg] = useState(null) // { type: 'success'|'error', text }
+  const [inviteMsg, setInviteMsg] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
+
+  // Edit mode for existing company settings
+  const [isEditing, setIsEditing] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [editSuccess, setEditSuccess] = useState('')
+  const [editData, setEditData] = useState({
+    appName: '', androidPackage: '', iosAppId: '',
+    socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false
+  })
 
   const [wizardData, setWizardData] = useState({
     companyName: '',
@@ -99,7 +109,6 @@ export default function Admin() {
     } else {
       handleUpdate('companyId', data.id)
       handleUpdate('inviteCode', data.invite_code)
-      // Add to companies list for multi-company support
       setCompanies(prev => [...prev, data])
       nextStep()
     }
@@ -124,13 +133,21 @@ export default function Admin() {
     if (error) {
       setStep5Error(error.message)
     } else {
-      // Find the newly created company and go to dashboard
       const newCompany = companies.find(c => c.id === wizardData.companyId)
       if (newCompany) {
         setSelectedCompany(newCompany)
         localStorage.setItem('selectedCompanyId', newCompany.id)
+        setShowDashboard(true)
+      } else {
+        const { data: fetched } = await supabase
+          .from('companies').select('*').eq('id', wizardData.companyId).maybeSingle()
+        if (fetched) {
+          setCompanies(prev => [...prev, fetched])
+          setSelectedCompany(fetched)
+          localStorage.setItem('selectedCompanyId', fetched.id)
+        }
+        setShowDashboard(true)
       }
-      setShowDashboard(true)
     }
     setStep5Loading(false)
   }
@@ -172,7 +189,7 @@ export default function Admin() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    navigate('/auth')
+    navigate('/', { replace: true })
   }
 
   const handleCopyCode = () => {
@@ -221,20 +238,52 @@ export default function Admin() {
   }
 
   const handleAddNewCompany = () => {
-    // Reset wizard for a fresh company creation
     setShowDashboard(false)
     setCurrentStep(1)
     setWizardData({
-      companyName: '',
-      companyId: null,
-      inviteCode: '',
-      appName: '',
-      androidPackage: '',
-      iosAppId: '',
-      socialSources: [],
-      timeframe: 'Last 30 days',
-      alertsEnabled: false
+      companyName: '', companyId: null, inviteCode: '',
+      appName: '', androidPackage: '', iosAppId: '',
+      socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false
     })
+  }
+
+  const handleEditCompany = async () => {
+    // Pre-fill editData from the current project settings in DB
+    const { data } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('company_id', selectedCompany.id)
+      .maybeSingle()
+    setEditData({
+      appName: data?.app_name || '',
+      androidPackage: data?.android_package || '',
+      iosAppId: data?.ios_app_id || '',
+      socialSources: data?.social_handles || [],
+      timeframe: data?.timeframe || 'Last 30 days',
+      alertsEnabled: data?.alerts_enabled || false
+    })
+    setIsEditing(true)
+    setEditError('')
+    setEditSuccess('')
+  }
+
+  const handleSaveSettings = async () => {
+    setEditSaving(true)
+    setEditError('')
+    setEditSuccess('')
+    // Upsert project row for this company
+    const { error } = await supabase.from('projects').upsert({
+      company_id: selectedCompany.id,
+      app_name: editData.appName,
+      android_package: editData.androidPackage,
+      ios_app_id: editData.iosAppId,
+      social_handles: editData.socialSources,
+      timeframe: editData.timeframe,
+      alerts_enabled: editData.alertsEnabled
+    }, { onConflict: 'company_id' })
+    if (error) setEditError(error.message)
+    else { setEditSuccess('Settings saved!'); setIsEditing(false) }
+    setEditSaving(false)
   }
 
 
@@ -657,256 +706,161 @@ export default function Admin() {
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // INVITE TEAM (post-setup)
   // ─────────────────────────────────────────────────────────────────────────
-  if (showInvite) {
+  // ADMIN HOME VIEW (returned admins - NO analytics, management only)
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderAdminHome = () => {
+    const inviteCode = selectedCompany?.invite_code || wizardData.inviteCode
+    const joinLink = `${window.location.origin}/join?code=${inviteCode}&email=`
+
     return (
-      <div className="center-screen" id="screen-complete">
+      <div className="screen active" style={{ overflowY: 'auto' }}>
         <div className="bg-grid" />
-        <div className="success-ring">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <h1 className="complete-title">Setup Complete!</h1>
-        <p className="complete-sub">Your ReviewAI workspace is ready. Now invite your team.</p>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px', width: '100%', position: 'relative', zIndex: 1 }}>
 
-        {/* Invite Code */}
-        <div className="invite-card">
-          <div className="invite-card__label">Company Invite Code</div>
-          <div className="invite-card__code">{wizardData.inviteCode}</div>
-          <p className="invite-card__hint">Share this code with employees so they can join your workspace.</p>
-        </div>
-
-        {/* Email Invite */}
-        <div className="invite-card" style={{ maxWidth: 420 }}>
-          <div className="invite-card__label">Invite via Email</div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <input
-              type="email"
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', fontFamily: 'var(--font)', outline: 'none' }}
-              onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
-            />
-            <button className="btn btn-primary" onClick={handleSendInvite} disabled={inviteLoading}>
-              {inviteLoading ? <span className="loader" /> : 'Send Invite'}
-            </button>
-          </div>
-          {inviteMsg && (
-            <div style={{ marginTop: 10 }}>
-              <div className={`wiz-alert wiz-alert--${inviteMsg.type}`}>
-                {inviteMsg.type === 'success' ? '✓' : '⚠'} {inviteMsg.type === 'success' ? `Invite created for ${inviteMsg.text.split('Invite created for ')[1]?.split('.')[0]}` : inviteMsg.text}
-              </div>
-              {inviteMsg.link && (
-                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    readOnly
-                    value={inviteMsg.link}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', fontFamily: 'monospace', background: 'var(--surface2)', color: 'var(--text2)' }}
-                    onClick={e => e.target.select()}
-                  />
-                  <button
-                    className="btn btn-ghost"
-                    style={{ flexShrink: 0, fontSize: '0.8rem' }}
-                    onClick={() => { navigator.clipboard.writeText(inviteMsg.link); }}
-                  >
-                    Copy Link
-                  </button>
-                </div>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+            <div className="logo-mark">
+              <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+                <rect width="36" height="36" rx="8" fill="url(#lgAdminH)" />
+                <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <defs><linearGradient id="lgAdminH" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stopColor="#1F4D3B" /><stop offset="1" stopColor="#143528" /></linearGradient></defs>
+              </svg>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>ReviewAI — Admin</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {companies.length > 1 && (
+                <select
+                  value={selectedCompany?.id || ''}
+                  onChange={handleCompanySwitch}
+                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontFamily: 'var(--font)', fontSize: '0.85rem' }}
+                >
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               )}
-            </div>
-          )}
-        </div>
-
-        <button className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
-          Go to Dashboard →
-        </button>
-      </div>
-    )
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // DASHBOARD VIEW (returning admins)
-  // ─────────────────────────────────────────────────────────────────────────
-  const renderDashboard = () => (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 28px', borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)', position: 'sticky', top: 0, zIndex: 10,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-      }}>
-        {/* Left: logo + company selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }}>
-            <svg width="24" height="24" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="url(#lgDash)" />
-              <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <defs>
-                <linearGradient id="lgDash" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#1F4D3B" /><stop offset="1" stopColor="#143528" />
-                </linearGradient>
-              </defs>
-            </svg>
-            ReviewAI
-          </div>
-          {companies.length > 1 ? (
-            <select
-              value={selectedCompany?.id || ''}
-              onChange={handleCompanySwitch}
-              style={{
-                padding: '6px 12px', borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)', background: 'var(--surface2)',
-                fontSize: '0.88rem', fontFamily: 'var(--font)', cursor: 'pointer',
-                color: 'var(--text)', outline: 'none'
-              }}
-            >
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          ) : (
-            <span style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
-              {selectedCompany?.name}
-            </span>
-          )}
-        </div>
-
-        {/* Right: actions */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button className="btn btn-primary" onClick={handleAddNewCompany}>+ Add New Company</button>
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: '0.82rem' }}
-            onClick={handleLogout}
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div style={{ flex: 1, padding: '40px 28px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
-        {/* Welcome */}
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
-          Welcome back 👋
-        </h1>
-        <p style={{ color: 'var(--text2)', marginBottom: 36 }}>
-          Manage your workspace and invite team members below.
-        </p>
-
-        {/* Company card */}
-        <div className="card" style={{ padding: 28, marginBottom: 28 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 4 }}>
-                Company
-              </div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text)' }}>
-                {selectedCompany?.name}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 4 }}>
-                Invite Code
-              </div>
-              <div style={{
-                fontFamily: 'Courier New, monospace', fontSize: '1.3rem', fontWeight: 800,
-                color: 'var(--primary)', background: 'var(--primary-glow)',
-                padding: '4px 14px', borderRadius: 8, display: 'inline-block'
-              }}>
-                {selectedCompany?.invite_code}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Invite / Share card */}
-        <div className="card" style={{ padding: 28 }}>
-          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 6 }}>Invite Team Members</div>
-          <p style={{ color: 'var(--text2)', fontSize: '0.88rem', marginBottom: 20 }}>
-            Share this code or use the quick-share buttons below to onboard your team.
-          </p>
-
-          <div className="sidebar-invite-code" style={{ fontSize: '1.4rem', marginBottom: 20 }}>
-            {selectedCompany?.invite_code}
-          </div>
-
-          <div className="share-btn-row" style={{ justifyContent: 'flex-start', gap: 12 }}>
-            <a
-              href={`mailto:?subject=Join our workspace on ReviewAI&body=Hi, join our ReviewAI workspace using invite code: ${selectedCompany?.invite_code}`}
-              className="share-btn share-btn--gmail"
-              title="Share via Email"
-              style={{ width: 42, height: 42, fontSize: '1.1rem' }}
-            >
-              ✉
-            </a>
-            <a
-              href={`https://wa.me/?text=Hey! Join our ReviewAI workspace using invite code: ${selectedCompany?.invite_code}`}
-              target="_blank"
-              rel="noreferrer"
-              className="share-btn share-btn--whatsapp"
-              title="Share via WhatsApp"
-              style={{ width: 42, height: 42, fontSize: '1.1rem' }}
-            >
-              ✆
-            </a>
-            <div style={{ position: 'relative' }}>
-              <button
-                className="share-btn share-btn--copy"
-                onClick={handleCopyCode}
-                title="Copy Invite Code"
-                style={{ width: 42, height: 42, fontSize: '1.1rem' }}
-              >
-                ⎘
-              </button>
-              {isCopied && <div className="copy-toast">Copied!</div>}
+              <button className="btn btn-ghost" style={{ fontSize: '0.85rem' }} onClick={handleAddNewCompany}>+ Add Company</button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.85rem' }} onClick={handleLogout}>Sign Out</button>
             </div>
           </div>
 
-          {/* Email invite with link generation */}
-          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.88rem', marginBottom: 8, color: 'var(--text2)' }}>
-              Send a personalised invite link
+          {/* Company name */}
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 6 }}>{selectedCompany?.name}</h1>
+          <p style={{ color: 'var(--text2)', marginBottom: 32 }}>Manage your workspace settings and invite team members.</p>
+
+          {/* Invite Section */}
+          <div className="card" style={{ padding: 28, marginBottom: 24 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>Invite Team Members</div>
+            <p style={{ color: 'var(--text2)', fontSize: '0.85rem', marginBottom: 16 }}>Share this link or code with employees to grant access.</p>
+
+            {/* Invite Code display */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.1em', color: 'var(--primary)' }}>
+                {inviteCode}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <button className="btn btn-ghost" onClick={handleCopyCode}>{isCopied ? '✓ Copied!' : '⎘ Copy Code'}</button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+
+            {/* Join link */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>Join Link (share with employee email appended)</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input readOnly value={joinLink} style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', fontFamily: 'monospace', background: 'var(--surface2)', color: 'var(--text2)' }} onClick={e => e.target.select()} />
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem', flexShrink: 0 }} onClick={() => navigator.clipboard.writeText(joinLink)}>Copy</button>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text2)', marginTop: 4 }}>Tip: append <code>?email=employee@company.com</code> to pre-fill their email.</p>
+            </div>
+
+            {/* Email invite */}
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 8 }}>Send Invite via Email</div>
+            <div style={{ display: 'flex', gap: 10 }}>
               <input
                 type="email"
                 placeholder="colleague@company.com"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                style={{ flex: 1, padding: '9px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.88rem', fontFamily: 'var(--font)', outline: 'none' }}
                 onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
+                style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', fontFamily: 'var(--font)', outline: 'none' }}
               />
-              <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={handleSendInvite} disabled={inviteLoading}>
-                {inviteLoading ? <span className="loader" /> : 'Generate Link'}
+              <button className="btn btn-primary" onClick={handleSendInvite} disabled={inviteLoading}>
+                {inviteLoading ? <span className="loader" /> : 'Send Invite'}
               </button>
             </div>
             {inviteMsg && (
-              <div style={{ marginTop: 8 }}>
-                <div className={`wiz-alert wiz-alert--${inviteMsg.type}`}>
-                  {inviteMsg.type === 'success' ? '✓ Invite created!' : `⚠ ${inviteMsg.text}`}
-                </div>
+              <div className={`wiz-alert wiz-alert--${inviteMsg.type}`} style={{ marginTop: 10 }}>
+                {inviteMsg.type === 'success' ? '✓' : '⚠'} {inviteMsg.type === 'success' ? `Invite sent to ${inviteEmail || 'employee'}.` : inviteMsg.text}
                 {inviteMsg.link && (
                   <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      readOnly value={inviteMsg.link}
-                      style={{ flex: 1, padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.76rem', fontFamily: 'monospace', background: 'var(--surface2)', color: 'var(--text2)' }}
-                      onClick={e => e.target.select()}
-                    />
-                    <button className="btn btn-ghost" style={{ flexShrink: 0, fontSize: '0.8rem' }} onClick={() => navigator.clipboard.writeText(inviteMsg.link)}>
-                      Copy
-                    </button>
+                    <input readOnly value={inviteMsg.link} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', fontFamily: 'monospace', background: 'var(--surface2)' }} onClick={e => e.target.select()} />
+                    <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => navigator.clipboard.writeText(inviteMsg.link)}>Copy Link</button>
                   </div>
                 )}
               </div>
             )}
           </div>
+
+          {/* Company Settings Section */}
+          <div className="card" style={{ padding: 28 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem' }}>Company Settings</div>
+              {!isEditing && (
+                <button className="btn btn-ghost" style={{ fontSize: '0.85rem' }} onClick={handleEditCompany}>Edit Settings</button>
+              )}
+            </div>
+
+            {!isEditing ? (
+              <p style={{ color: 'var(--text2)', fontSize: '0.9rem' }}>Click <strong>Edit Settings</strong> to update your app handles, social sources, and analysis configuration.</p>
+            ) : (
+              <div>
+                <div className="field-row">
+                  <div className="field-group">
+                    <label>App Name</label>
+                    <input type="text" value={editData.appName} onChange={e => setEditData(p => ({ ...p, appName: e.target.value }))} placeholder="e.g. Swiggy" />
+                  </div>
+                </div>
+                <div className="field-row">
+                  <div className="field-group">
+                    <label>Android Package</label>
+                    <input type="text" value={editData.androidPackage} onChange={e => setEditData(p => ({ ...p, androidPackage: e.target.value }))} placeholder="com.example.app" />
+                  </div>
+                  <div className="field-group">
+                    <label>iOS App ID</label>
+                    <input type="text" value={editData.iosAppId} onChange={e => setEditData(p => ({ ...p, iosAppId: e.target.value }))} placeholder="123456789" />
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label>Default Timeframe</label>
+                  <select value={editData.timeframe} onChange={e => setEditData(p => ({ ...p, timeframe: e.target.value }))}>
+                    {TIMEFRAMES.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="toggle-row" style={{ marginBottom: 20 }}>
+                  <div>
+                    <div className="toggle-label">Enable real-time alerts</div>
+                    <div className="toggle-sub">Get notified on negative sentiment spikes</div>
+                  </div>
+                  <label className="toggle">
+                    <input type="checkbox" checked={editData.alertsEnabled} onChange={e => setEditData(p => ({ ...p, alertsEnabled: e.target.checked }))} />
+                    <span className="track"><span className="thumb" /></span>
+                  </label>
+                </div>
+                {editError && <div className="wiz-alert wiz-alert--error">⚠ {editError}</div>}
+                {editSuccess && <div className="wiz-alert wiz-alert--success">✓ {editSuccess}</div>}
+                <div className="btn-row spaced">
+                  <button className="btn btn-ghost" onClick={() => setIsEditing(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleSaveSettings} disabled={editSaving}>
+                    {editSaving ? <span className="loader" /> : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // MAIN RENDER
@@ -916,7 +870,7 @@ export default function Admin() {
   }
 
   if (showDashboard && selectedCompany) {
-    return renderDashboard();
+    return renderAdminHome();
   }
 
   // Default wizard layout

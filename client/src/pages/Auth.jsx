@@ -9,13 +9,7 @@ export default function Auth() {
   const { user, role, loading: authLoading } = useAuth()
   const roleFromState = location.state?.role ?? 'admin'
 
-  useEffect(() => {
-    if (!authLoading && user && role) {
-      const target = role === 'admin' ? '/admin' : '/dashboard'
-      navigate(target, { replace: true })
-    }
-  }, [user, role, authLoading, navigate])
-
+  // ── ALL STATE DECLARED FIRST (before any useEffect that references them) ──
   const [authMode, setAuthMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,6 +28,16 @@ export default function Auth() {
   const [validatedInviteId, setValidatedInviteId] = useState(null)
   const [joinSuccess, setJoinSuccess] = useState(false)
 
+  // ── REDIRECT ALREADY-AUTHENTICATED USERS ─────────────────────────────────
+  // EXCEPTION: If an employee is mid-invite-validation, do NOT redirect yet.
+  useEffect(() => {
+    if (!authLoading && user && role) {
+      if (role === 'employee' && step === 'invite') return
+      const target = role === 'admin' ? '/admin' : '/dashboard'
+      navigate(target, { replace: true })
+    }
+  }, [user, role, authLoading, navigate, step])
+
   const isLogin = authMode === 'login'
   const isEmployee = roleFromState === 'employee'
 
@@ -49,75 +53,17 @@ export default function Auth() {
     setSuccessMsg(null)
   }
 
- const handleSubmit = async () => {
-  console.log('[handleSubmit] called → isValid:', isValid(), '| loading:', loading);
-  if (!isValid() || loading) {
-    console.warn('[handleSubmit] Blocked — isValid:', isValid(), '| loading:', loading);
-    return;
-  }
-
-  setError(null);
-  setSuccessMsg(null);
-  setLoading(true);
-
-  try {
-    if (isLogin) {
-      console.log("STEP 1: Login start");
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      console.log("STEP 2: Login response", data, error);
-
-      if (error) {
-        throw error; // ✅ unified error handling
-      }
-
-      if (!data?.user) {
-        throw new Error("No user returned from login");
-      }
-
-      console.log("STEP 3: Navigating to admin");
-      navigate('/admin', { replace: true });
-
-    } else {
-      console.log("STEP 1: Signup start");
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      console.log("STEP 2: Signup response", data, error);
-
-      if (error) {
-        throw error;
-      }
-
-      setSuccessMsg("Account created! Please log in.");
-      setAuthMode('login'); // safer than switchMode here
-    }
-
-  } catch (err) {
-    console.error("Auth error:", err);
-    setError(err.message || "Something went wrong");
-  } finally {
-    console.log("STEP FINAL: Reset loading");
-    setLoading(false); // ✅ always runs
-  }
-};
+  // ── POST-AUTH: route employee or admin correctly ──────────────────────────
   const handlePostAuth = async (user) => {
     try {
       if (isEmployee && validatedCompanyId) {
-        // Check if already a member
+        // Check if already a member to avoid duplicate inserts
         const { data: existing } = await supabase
           .from('employees')
           .select('id')
           .eq('user_id', user.id)
           .eq('company_id', validatedCompanyId)
-          .single()
+          .maybeSingle()
 
         if (!existing) {
           const { error: insertErr } = await supabase.from('employees').insert({
@@ -125,7 +71,10 @@ export default function Auth() {
             company_id: validatedCompanyId,
             role: 'employee'
           })
-          if (insertErr) { setError(insertErr.message); return }
+          if (insertErr) {
+            setError(insertErr.message)
+            return
+          }
         }
 
         // Mark the invite as used
@@ -137,9 +86,10 @@ export default function Auth() {
         }
 
         setJoinSuccess(true)
-        setTimeout(() => navigate('/dashboard'), 1800)
+        setTimeout(() => navigate('/dashboard', { replace: true }), 1800)
       } else {
-        navigate('/admin')
+        // Admin → go to admin dashboard
+        navigate('/admin', { replace: true })
       }
     } catch (e) {
       console.error('Post auth error:', e)
@@ -147,6 +97,40 @@ export default function Auth() {
     }
   }
 
+  // ── MAIN SUBMIT (login + signup) ─────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!isValid() || loading) return
+    setError(null)
+    setSuccessMsg(null)
+    setLoading(true)
+
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        if (!data?.user) throw new Error('No user returned from login')
+        // Route correctly: employees link workspace, admins go to /admin
+        await handlePostAuth(data.user)
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        // For new signups that are employees with a validated invite, link immediately
+        if (data?.user && isEmployee && validatedCompanyId) {
+          await handlePostAuth(data.user)
+        } else {
+          setSuccessMsg('Account created! Please log in.')
+          setAuthMode('login')
+        }
+      }
+    } catch (err) {
+      console.error('Auth error:', err)
+      setError(err.message || 'Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── INVITE CODE VALIDATION ────────────────────────────────────────────────
   const handleCodeSubmit = async () => {
     if (!inviteEmail.trim() || !inviteEmail.includes('@')) { setCodeError('Please enter a valid email address.'); return }
     if (!companyCode.trim()) { setCodeError('Please enter your invite code.'); return }
@@ -154,18 +138,25 @@ export default function Auth() {
     setCodeError('')
 
     try {
-      // Look up invite by code + email + status
-      const { data: invite, error: lookupErr } = await supabase
+      // Look up invite by code + email
+      const { data: inviteList, error: lookupErr } = await supabase
         .from('invites')
         .select('id, company_id, expires_at, status')
         .eq('invite_code', companyCode.trim().toUpperCase())
         .eq('email', inviteEmail.trim().toLowerCase())
-        .single()
 
-      if (lookupErr || !invite) {
+      if (lookupErr) {
+        setCodeError(`Invalid invite. DB Error: ${lookupErr.message}`)
+        return
+      }
+
+      if (!inviteList || inviteList.length === 0) {
         setCodeError('Invalid invite. Make sure your email and code match the invite sent by your admin.')
         return
       }
+
+      // If multiple exist (e.g. admin clicked send multiple times), prioritize pending ones
+      const invite = inviteList.find(i => i.status === 'pending') || inviteList[0]
 
       if (invite.status === 'used') {
         setCodeError('This invite has already been used. Ask your admin for a new one.')
@@ -233,7 +224,6 @@ export default function Auth() {
 
           <div className="card login-card">
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ fontSize: '2rem', marginBottom: 10 }}>🔑</div>
               <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 6 }}>Join Your Workspace</h1>
               <p className="sub">Enter your email and the invite code sent by your admin.</p>
             </div>
@@ -314,7 +304,7 @@ export default function Auth() {
               onMouseEnter={e => e.target.style.color = 'var(--text)'}
               onMouseLeave={e => e.target.style.color = 'var(--text2)'}
             >
-              ← Change role
+              — Change role
             </button>
           </div>
 

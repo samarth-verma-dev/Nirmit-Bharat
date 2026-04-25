@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ReviewAI — Admin Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="bg-grid"></div>
+  <div class="login-wrap">
+    <div class="logo-mark">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="url(#lg1)"/><path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs></svg>
+      <span>ReviewAI</span>
+    </div>
+    <div class="card login-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthMode('login')">Login</button>
+        <button class="auth-tab" onclick="switchAuthMode('signup')">Sign Up</button>
+      </div>
+      <h1 id="auth-title">Welcome back</h1>
+      <p class="sub" id="auth-sub">Sign in to your admin portal</p>
+      
+      <div class="field-group">
+        <label>Email address</label>
+        <input id="auth-email" type="email" placeholder="admin@company.com" oninput="validateAuth()"/>
+      </div>
+      
+      <div class="field-group">
+        <label>Password</label>
+        <input id="auth-pass" type="password" placeholder="••••••••" oninput="validateAuth()"/>
+      </div>
+
+      <div class="field-group" id="confirm-pass-group" style="display: none; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease;">
+        <label>Confirm Password</label>
+        <input id="auth-confirm-pass" type="password" placeholder="••••••••" oninput="validateAuth()"/>
+      </div>
+
+      <div id="auth-error" class="error-msg" style="display: none;"></div>
+
+      <button id="btn-auth" class="btn btn-primary btn-full" disabled onclick="handleAuthSubmit()">
+        <span id="btn-auth-text">Login</span>
+        <span id="btn-auth-loader" class="loader" style="display: none;"></span>
+      </button>
+
+      <p class="hint-link" id="auth-hint">Don't have an account? <a href="#" onclick="switchAuthMode('signup')">Sign up</a></p>
+      <p class="hint-link" id="forgot-link">Forgot password? <a href="#">Reset here</a></p>
+    </div>
+    <p class="footer-note">© 2026 ReviewAI Inc. · Privacy · Terms</p>
+  </div>
+</div>
+
+<!-- WIZARD -->
+<div id="screen-wizard" class="screen">
+  <div class="wizard-layout">
+    <aside class="sidebar">
+      <div class="logo-mark sidebar-logo">
+        <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="url(#lg2)"/><path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs></svg>
+        <span>ReviewAI</span>
+      </div>
+      <nav class="step-nav" id="step-nav"></nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar">A</div>
+          <div>
+            <div class="uname">Admin User</div>
+            <div class="uemail">admin@company.com</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <main class="wizard-main">
+      <div class="step-header">
+        <div id="step-label" class="step-badge">Step 1 of 5</div>
+        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="step-pane active" id="step-1">
+        <div class="card step-card">
+          <div class="card-head"><span class="card-icon">🏷️</span><div><h2>App Identification</h2><p>Tell us about your application</p></div></div>
+          <div class="field-group"><label>App Name <span class="req">*</span></label><input id="s1-name" type="text" placeholder="e.g. My Awesome App" oninput="checkStep1()"/></div>
+          <div class="field-group"><label>Android Package Name <span class="req">*</span></label><input id="s1-android" type="text" placeholder="com.company.appname" oninput="checkStep1()"/></div>
+          <div class="field-group"><label>iOS App Store App ID <span class="req">*</span></label><input id="s1-ios" type="text" placeholder="1234567890" oninput="checkStep1()"/></div>
+          <div class="btn-row"><button id="btn-s1" class="btn btn-primary" disabled onclick="nextStep()">Continue <span class="arrow">→</span></button></div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-pane" id="step-2">
+        <div class="card step-card">
+          <div class="card-head"><span class="card-icon">🔗</span><div><h2>App Store Integration</h2><p>Connect your store accounts (optional)</p></div></div>
+          <div class="upload-area" id="upload-area" onclick="document.getElementById('gp-file').click()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="upload-label">Upload Google Play JSON credentials</span>
+            <input type="file" id="gp-file" accept=".json" style="display:none" onchange="handleFileUpload(this)"/>
+          </div>
+          <div class="divider-label">Apple App Store</div>
+          <div class="field-row">
+            <div class="field-group"><label>Apple API Key</label><input id="s2-apikey" type="text" placeholder="AuthKey_XXXXXXXX.p8"/></div>
+            <div class="field-group"><label>Issuer ID</label><input id="s2-issuer" type="text" placeholder="xxxxxxxx-xxxx-..."/></div>
+          </div>
+          <div class="field-group"><label>Key ID</label><input id="s2-keyid" type="text" placeholder="XXXXXXXXXX"/></div>
+          <div class="btn-row spaced">
+            <button class="btn btn-ghost" onclick="nextStep()">Skip for now</button>
+            <button class="btn btn-secondary" onclick="testConnection()">Test Connection</button>
+            <button class="btn btn-primary" onclick="nextStep()">Continue <span class="arrow">→</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-pane" id="step-3">
+        <div class="card step-card">
+          <div class="card-head"><span class="card-icon">📣</span><div><h2>Social Media Sources</h2><p>Add your social handles to monitor</p></div></div>
+          <div id="social-fields">
+            <div class="field-group"><label>Twitter / X Handle</label><input type="text" placeholder="@yourhandle"/></div>
+            <div class="field-group"><label>Instagram Handle</label><input type="text" placeholder="@yourhandle"/></div>
+            <div class="field-group"><label>Reddit Subreddit <span class="opt">(optional)</span></label><input type="text" placeholder="r/yourapp"/></div>
+          </div>
+          <button class="btn btn-ghost add-btn" onclick="addSocialField()">+ Add more source</button>
+          <div class="btn-row"><button class="btn btn-primary" onclick="nextStep()">Continue <span class="arrow">→</span></button></div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-pane" id="step-4">
+        <div class="card step-card">
+          <div class="card-head"><span class="card-icon">⚙️</span><div><h2>Configuration</h2><p>Tune your analytics preferences</p></div></div>
+          <div class="field-row">
+            <div class="field-group">
+              <label>Analysis Timeframe <span class="req">*</span></label>
+              <select id="s4-timeframe">
+                <option value="">Select timeframe...</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Region <span class="opt">(optional)</span></label>
+              <select id="s4-region">
+                <option value="">All regions</option>
+                <option>United States</option><option>United Kingdom</option>
+                <option>India</option><option>Germany</option>
+                <option>Australia</option><option>Canada</option>
+              </select>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-label">Enable Smart Alerts</div><div class="toggle-sub">Get notified when sentiment drops or spikes</div></div>
+            <label class="toggle"><input type="checkbox" id="s4-alerts" checked/><span class="track"><span class="thumb"></span></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-label">Weekly Digest Email</div><div class="toggle-sub">Receive a summary report every Monday</div></div>
+            <label class="toggle"><input type="checkbox" id="s4-digest"/><span class="track"><span class="thumb"></span></span></label>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="nextStep()">Continue <span class="arrow">→</span></button></div>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step-pane" id="step-5">
+        <div class="card step-card">
+          <div class="card-head"><span class="card-icon">✅</span><div><h2>Confirmation</h2><p>Review your setup before launching</p></div></div>
+          <div class="summary-grid" id="summary-grid"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-launch" onclick="startAnalysis()">🚀 Start Analysis</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- PROCESSING -->
+<div id="screen-processing" class="screen">
+  <div class="center-screen">
+    <div class="pulse-ring"></div>
+    <div class="proc-icon">
+      <svg width="40" height="40" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="10" fill="url(#lg3)"/><path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg3" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs></svg>
+    </div>
+    <h2 class="proc-title">Analyzing reviews and generating insights...</h2>
+    <div class="proc-bar-wrap"><div class="proc-bar"><div class="proc-bar-fill" id="proc-fill"></div></div></div>
+    <p class="proc-step" id="proc-step">Fetching app store data...</p>
+    <div class="proc-steps-list" id="proc-steps"></div>
+  </div>
+</div>
+
+<!-- COMPLETE -->
+<div id="screen-complete" class="screen">
+  <div class="center-screen">
+    <div class="success-ring">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1 class="complete-title">Setup Complete</h1>
+    <p class="complete-sub">Your system is ready. ReviewAI is now monitoring your app across all configured channels.</p>
+    <div class="complete-stats">
+      <div class="stat-chip"><div class="stat-num" id="stat-sources">4</div><div class="stat-lbl">Sources Connected</div></div>
+      <div class="stat-chip"><div class="stat-num">AI</div><div class="stat-lbl">Engine Active</div></div>
+      <div class="stat-chip"><div class="stat-num" id="stat-days">30</div><div class="stat-lbl">Days Analyzed</div></div>
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="goDashboard()">Go to Support Dashboard →</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

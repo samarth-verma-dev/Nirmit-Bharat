@@ -1,26 +1,34 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #F5F5F0;
+  --bg: #FAFAFA;
   --bg2: #FFFFFF;
   --surface: #FFFFFF;
-  --surface2: #FCFCF9;
-  --border: rgba(0,0,0,0.08);
+  --surface2: #F4F4F5;
+  --border: #E4E4E7;
   --border-focus: #1F4D3B;
-  --text: #1A1A1A;
-  --text2: #A46A3D;
-  --text3: #C2A792;
+  --text: #09090B;
+  --text2: #52525B;
+  --text3: #A1A1AA;
+  
   --primary: #1F4D3B;
   --primary-dark: #143528;
-  --primary-glow: rgba(31, 77, 59, 0.12);
+  --primary-glow: rgba(31, 77, 59, 0.08);
+  
   --accent: #A46A3D;
-  --accent-glow: rgba(164, 106, 61, 0.15);
-  --success: #1F4D3B;
-  --warning: #d97706;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.05);
-  --shadow-lg: 0 12px 48px rgba(0,0,0,0.08);
+  --accent-glow: rgba(164, 106, 61, 0.08);
+  
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  
+  --radius: 12px;
+  --radius-sm: 8px;
+  
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.03);
+  
   --font: 'Inter', system-ui, sans-serif;
 }
 
@@ -403,6 +411,28 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   color: var(--text3); font-size: 0.88rem; text-align: center;
 }
 .empty-state span { font-size: 1.6rem; }
+
+/* ── PROCESSING LOADER ───────────────────────────────── */
+.pulse-ring {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: var(--primary-glow); position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.pulse-ring::before, .pulse-ring::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 50%; border: 2px solid var(--primary);
+  animation: pulseAnim 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+.pulse-ring::after { animation-delay: 1s; }
+@keyframes pulseAnim {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.proc-icon {
+  animation: spin 3s linear infinite;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
 /* ── INVITE CARD ─────────────────────────────────────── */
 .invite-card {

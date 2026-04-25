@@ -16,9 +16,10 @@ import {
   RadialBar,
 } from "recharts";
 import {
-  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, Users, Settings, Plus, Sparkles, CheckCircle2, MoreVertical, Star, Smile, Database
+  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, Users, Settings, Plus, Sparkles, CheckCircle2, MoreVertical, Star, Smile, Database, LogOut
 } from 'lucide-react';
 import styles from "./dashboard.module.css";
+import { useAuth } from "../../context/AuthContext";
 
 import analyticsData from "../../../analytics_summary_fast.json";
 
@@ -113,6 +114,8 @@ function CustomTooltip({ active, payload, label }) {
    SIDEBAR
 ───────────────────────────────────────────────────────────── */
 function Sidebar() {
+  const { signOut } = useAuth();
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarLogo}>
@@ -147,9 +150,13 @@ function Sidebar() {
       </nav>
 
       <div className={styles.sidebarBottom}>
-        <button className={styles.newAnalysisBtn}>
+        <button className={styles.newAnalysisBtn} style={{ marginBottom: '12px' }}>
           <Plus size={18} />
           New Analysis
+        </button>
+        <button className={styles.newAnalysisBtn} onClick={signOut} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}>
+          <LogOut size={18} />
+          Sign Out
         </button>
       </div>
     </aside>

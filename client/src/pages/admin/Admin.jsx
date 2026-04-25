@@ -1,26 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { fetchAppMetadata } from '../../services/appAutofill'
 
 const STEPS = [
-  { num: 1, label: 'Create Company' },
-  { num: 2, label: 'App Details' },
-  { num: 3, label: 'Social Sources' },
-  { num: 4, label: 'Configuration' },
-  { num: 5, label: 'Review & Complete' }
+  { num: 1, label: 'Basic Info' },
+  { num: 2, label: 'Business Type' },
+  { num: 3, label: 'Review Sources' },
+  { num: 4, label: 'Data Input' },
+  { num: 5, label: 'Collect Feedback' },
+  { num: 6, label: 'Processing' }
 ]
 
 const SOCIAL_PLATFORMS = ['Instagram', 'Twitter/X', 'Reddit', 'Facebook', 'YouTube', 'Other']
 const TIMEFRAMES = ['Last 7 days', 'Last 30 days', 'Last 90 days']
 
 const MOCK_APPS = [
-  { name: 'Swiggy', package: 'in.swiggy.android', ios: 'id989540920', developer: 'Swiggy' },
-  { name: 'Zomato', package: 'com.application.zomato', ios: 'id434612044', developer: 'Zomato Ltd' },
-  { name: 'Nike', package: 'com.nike.omega', ios: 'id1095459556', developer: 'Nike, Inc.' },
-  { name: 'Spotify', package: 'com.spotify.music', ios: 'id324684580', developer: 'Spotify Ltd.' },
-  { name: 'Airbnb', package: 'com.airbnb.android', ios: 'id401626263', developer: 'Airbnb, Inc.' },
-  { name: 'Slack', package: 'com.Slack', ios: 'id618783545', developer: 'Slack Technologies' },
+  { name: 'Swiggy', package: 'in.swiggy.android', ios: 'id989540920', developer: 'Swiggy', socials: [{ platform: 'Twitter/X', handle: '@Swiggy' }, { platform: 'Instagram', handle: '@swiggyindia' }] },
+  { name: 'Zomato', package: 'com.application.zomato', ios: 'id434612044', developer: 'Zomato Ltd', socials: [{ platform: 'Twitter/X', handle: '@zomato' }, { platform: 'Instagram', handle: '@zomato' }] },
+  { name: 'Nike', package: 'com.nike.omega', ios: 'id1095459556', developer: 'Nike, Inc.', socials: [{ platform: 'Twitter/X', handle: '@Nike' }, { platform: 'Instagram', handle: '@nike' }] },
+  { name: 'Spotify', package: 'com.spotify.music', ios: 'id324684580', developer: 'Spotify Ltd.', socials: [{ platform: 'Twitter/X', handle: '@Spotify' }, { platform: 'Instagram', handle: '@spotify' }] },
+  { name: 'Airbnb', package: 'com.airbnb.android', ios: 'id401626263', developer: 'Airbnb, Inc.', socials: [{ platform: 'Twitter/X', handle: '@Airbnb' }, { platform: 'Instagram', handle: '@airbnb' }] },
+  { name: 'Slack', package: 'com.Slack', ios: 'id618783545', developer: 'Slack Technologies', socials: [{ platform: 'Twitter/X', handle: '@SlackHQ' }] },
 ]
 
 const genInviteCode = () =>
@@ -29,7 +31,10 @@ const genInviteCode = () =>
 export default function Admin() {
   const navigate = useNavigate()
 
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(() => {
+    const saved = localStorage.getItem('adminOnboardingStep')
+    return saved ? parseInt(saved, 10) : 1
+  })
   const [isComplete, setIsComplete] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
 
@@ -61,17 +66,47 @@ export default function Admin() {
     socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false
   })
 
-  const [wizardData, setWizardData] = useState({
-    companyName: '',
-    companyId: null,
-    inviteCode: '',
-    appName: '',
-    androidPackage: '',
-    iosAppId: '',
-    socialSources: [],
-    timeframe: 'Last 30 days',
-    alertsEnabled: false
+  const [wizardData, setWizardData] = useState(() => {
+    const defaultData = {
+      companyName: '',
+      companyId: null,
+      inviteCode: '',
+      appName: '',
+      androidPackage: '',
+      iosAppId: '',
+      socialSources: [],
+      timeframe: 'Last 30 days',
+      alertsEnabled: false,
+      // NEW UI FIELDS
+      adminFullName: '',
+      businessType: 'SaaS',
+      reviewSources: [],
+      websiteUrl: '',
+      noSystem: false
+    }
+
+    const saved = localStorage.getItem('adminOnboardingData')
+    if (saved) {
+      try { 
+        const parsed = JSON.parse(saved)
+        return {
+          ...defaultData,
+          ...parsed,
+          reviewSources: parsed.reviewSources || [],
+          socialSources: parsed.socialSources || []
+        }
+      } catch (e) { 
+        console.error('Failed to parse saved onboarding data', e) 
+      }
+    }
+    return defaultData
   })
+
+  // Persist state to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('adminOnboardingStep', currentStep.toString())
+    localStorage.setItem('adminOnboardingData', JSON.stringify(wizardData))
+  }, [currentStep, wizardData])
 
   // Social step local state
   const [socialPlatform, setSocialPlatform] = useState(SOCIAL_PLATFORMS[0])
@@ -84,6 +119,87 @@ export default function Admin() {
   const [appSearchResults, setAppSearchResults] = useState([])
   const [appVerified, setAppVerified] = useState(false)
   const [packageError, setPackageError] = useState('')
+  const [autofillLoading, setAutofillLoading] = useState(false)
+  const [autofillError, setAutofillError] = useState('')
+  const [autofillIcon, setAutofillIcon] = useState(null)
+  // Track whether user has manually edited each field
+  // useRef so async callbacks always read the LATEST value (no stale closure)
+  const [manualEdit, setManualEdit] = useState({ android: false, ios: false })
+  const manualEditRef = useRef({ android: false, ios: false })
+
+  // Autofill triggered manually — calls iTunes API directly (CORS-safe)
+  const handleAutofillClick = async () => {
+    const query = appSearchQuery.trim()
+    if (query.length <= 1) return
+
+    setAutofillLoading(true)
+    setAutofillError('')
+    setAutofillIcon(null)
+
+    try {
+      console.log('[Autofill] Starting fetch for:', query)
+      const data = await fetchAppMetadata(query)
+      console.log('[Autofill] Received data:', data)
+
+      if (!data || (!data.iosAppId && !data.androidPackage && (!data.socials || data.socials.length === 0))) {
+        setAutofillError('No data found for this app. Try a different spelling or fill manually.')
+        setAppVerified(false)
+        return
+      }
+
+      // Update search display name to canonical app name
+      if (data.appName) {
+        setAppSearchQuery(data.appName)
+      }
+
+      // Set app icon if returned
+      if (data.iconUrl) {
+        setAutofillIcon(data.iconUrl)
+      }
+
+      // Read LATEST manualEdit state from ref (avoids stale closure)
+      const me = manualEditRef.current
+
+      // Update wizard data
+      setWizardData(prev => {
+        const existingPlatforms = new Set(prev.socialSources.map(s => s.platform))
+        const newSocials = (data.socials || [])
+          .filter(s => !existingPlatforms.has(s.platform))
+          .map(s => ({ ...s, verified: true }))
+
+        const updated = {
+          ...prev,
+          appName: data.appName || prev.appName,
+          socialSources: [...prev.socialSources, ...newSocials],
+        }
+
+        // Only overwrite if user hasn't manually typed a value
+        if (!me.android && data.androidPackage) {
+          updated.androidPackage = data.androidPackage
+        }
+        if (!me.ios && data.iosAppId) {
+          updated.iosAppId = data.iosAppId
+        }
+
+        console.log('[Autofill] Applying to form:', {
+          androidPackage: updated.androidPackage,
+          iosAppId: updated.iosAppId,
+          socialSources: updated.socialSources.map(s => `${s.platform}: ${s.handle}`),
+        })
+
+        return updated
+      })
+
+      setAppVerified(true)
+      setPackageError('')
+    } catch (err) {
+      console.error('[Autofill] Error:', err)
+      setAutofillError('Failed to fetch app data. Check your connection and try again.')
+      setAppVerified(false)
+    } finally {
+      setAutofillLoading(false)
+    }
+  }
 
   const handleUpdate = (key, value) =>
     setWizardData(prev => ({ ...prev, [key]: value }))
@@ -93,6 +209,11 @@ export default function Admin() {
 
   // ── STEP 1: Save company to Supabase ───────────────────────────────────────
   const handleStep1Continue = async () => {
+    if (!wizardData.adminFullName.trim() || !wizardData.companyName.trim()) {
+      setStep1Error('Full Name and Company Name are required')
+      return
+    }
+
     setStep1Loading(true)
     setStep1Error('')
     const { data: { user } } = await supabase.auth.getUser()
@@ -133,6 +254,10 @@ export default function Admin() {
     if (error) {
       setStep5Error(error.message)
     } else {
+      // Clear localStorage after completion
+      localStorage.removeItem('adminOnboardingStep')
+      localStorage.removeItem('adminOnboardingData')
+
       const newCompany = companies.find(c => c.id === wizardData.companyId)
       if (newCompany) {
         setSelectedCompany(newCompany)
@@ -220,7 +345,12 @@ export default function Admin() {
           const stored = localStorage.getItem('selectedCompanyId')
           const preselected = data.find(c => c.id === stored) || data[0]
           setSelectedCompany(preselected)
-          setShowDashboard(true)
+          
+          // Only show dashboard if user is not in the middle of onboarding
+          const activeOnboarding = localStorage.getItem('adminOnboardingData')
+          if (!activeOnboarding) {
+            setShowDashboard(true)
+          }
         }
       } catch (err) {
         console.error('Unexpected error fetching companies:', err)
@@ -243,7 +373,9 @@ export default function Admin() {
     setWizardData({
       companyName: '', companyId: null, inviteCode: '',
       appName: '', androidPackage: '', iosAppId: '',
-      socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false
+      socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false,
+      adminFullName: '', businessType: 'SaaS', reviewSources: [],
+      websiteUrl: '', noSystem: false
     })
   }
 
@@ -313,6 +445,8 @@ export default function Admin() {
 
   const handleManualPackage = (val) => {
     handleUpdate('androidPackage', val)
+    setManualEdit(prev => ({ ...prev, android: true }))
+    manualEditRef.current = { ...manualEditRef.current, android: true }
     setAppVerified(false)
     const pkgRegex = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+[0-9a-z_]$/i
     if (val.trim() && !pkgRegex.test(val)) {
@@ -320,6 +454,13 @@ export default function Admin() {
     } else {
       setPackageError('')
     }
+  }
+
+  const handleManualIos = (val) => {
+    handleUpdate('iosAppId', val)
+    setManualEdit(prev => ({ ...prev, ios: true }))
+    manualEditRef.current = { ...manualEditRef.current, ios: true }
+    setAppVerified(false)
   }
 
   const addSocialSource = () => {
@@ -437,17 +578,29 @@ export default function Admin() {
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // STEP 1 — Create Company (saves to DB)
+  // STEP 1 — Basic Info (saves to DB)
   // ─────────────────────────────────────────────────────────────────────────
   const renderStep1 = () => (
     <div className={`step-pane ${currentStep === 1 ? 'active' : ''}`}>
       <div className="card step-card">
         <div className="card-head">
-          <div className="card-icon">🏢</div>
-          <div>
-            <h2>Create Company</h2>
-            <p>Set up your organization. This will be saved immediately.</p>
+          <div className="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
+          <div>
+            <h2>Basic Info</h2>
+            <p>Tell us a bit about yourself and your organization.</p>
+          </div>
+        </div>
+        <div className="field-group">
+          <label>Full Name <span className="req">*</span></label>
+          <input
+            type="text"
+            placeholder="e.g. Jane Doe"
+            value={wizardData.adminFullName}
+            onChange={e => handleUpdate('adminFullName', e.target.value)}
+            autoFocus
+          />
         </div>
         <div className="field-group">
           <label>Company Name <span className="req">*</span></label>
@@ -456,14 +609,13 @@ export default function Admin() {
             placeholder="e.g. Acme Corp"
             value={wizardData.companyName}
             onChange={e => handleUpdate('companyName', e.target.value)}
-            autoFocus
           />
         </div>
         {step1Error && <div className="wiz-alert wiz-alert--error">⚠ {step1Error}</div>}
         <div className="btn-row">
           <button
             className="btn btn-primary"
-            disabled={!wizardData.companyName.trim() || step1Loading}
+            disabled={!wizardData.companyName.trim() || !wizardData.adminFullName.trim() || step1Loading}
             onClick={handleStep1Continue}
           >
             {step1Loading ? <span className="loader" /> : <>Continue <span className="arrow">→</span></>}
@@ -474,236 +626,367 @@ export default function Admin() {
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // STEP 2 — App Details
+  // STEP 2 — Business Type
   // ─────────────────────────────────────────────────────────────────────────
+  const BUSINESS_TYPES = ['SaaS', 'E-commerce', 'Restaurant', 'App-based', 'Other']
   const renderStep2 = () => (
     <div className={`step-pane ${currentStep === 2 ? 'active' : ''}`}>
       <div className="card step-card">
         <div className="card-head">
-          <div className="card-icon">📱</div>
+          <div className="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </div>
           <div>
-            <h2>App Details</h2>
-            <p style={{ color: 'var(--accent)' }}>Used to fetch reviews from Play Store and App Store.</p>
+            <h2>Business Type</h2>
+            <p>What kind of business are you operating?</p>
           </div>
         </div>
-        <div className="field-group">
-          <label>App Name <span className="req">*</span></label>
-          <div className="search-input-wrap">
-            <input 
-              type="text" 
-              placeholder="Search your app (e.g., Swiggy, Zomato...)" 
-              value={appSearchQuery} 
-              onChange={e => handleAppSearch(e.target.value)} 
-              onFocus={() => appSearchQuery.trim().length > 1 && setIsSearching(true)}
-              onBlur={() => setTimeout(() => setIsSearching(false), 200)}
-            />
-            {isSearching && appSearchResults.length > 0 && (
-              <div className="search-dropdown">
-                {appSearchResults.map((app, i) => (
-                  <div key={i} className="search-result-item" onMouseDown={() => handleSelectMockApp(app)}>
-                    <div className="app-icon-ph">{app.name.charAt(0)}</div>
-                    <div>
-                      <div className="app-res-title">{app.name}</div>
-                      <div className="app-res-dev">{app.developer}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="field-row">
-          <div className="field-group">
-            <label>Android Package <span className="req">*</span> {appVerified && <span className="verified-badge">✓ Verified</span>}</label>
-            <input type="text" placeholder="com.example.app" value={wizardData.androidPackage} onChange={e => handleManualPackage(e.target.value)} />
-            {packageError && <span style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: 4 }}>{packageError}</span>}
-          </div>
-          <div className="field-group">
-            <label>iOS App ID <span className="req">*</span> {appVerified && <span className="verified-badge">✓ Verified</span>}</label>
-            <input type="text" placeholder="123456789" value={wizardData.iosAppId} onChange={e => { handleUpdate('iosAppId', e.target.value); setAppVerified(false); }} />
-          </div>
+        <div className="field-group" style={{ marginBottom: 24 }}>
+          <label>Select your industry</label>
+          <select 
+            value={wizardData.businessType} 
+            onChange={e => handleUpdate('businessType', e.target.value)}
+            style={{ appearance: 'none', background: 'var(--surface2) url("data:image/svg+xml;utf8,<svg fill=%27none%27 stroke=%27%231A1A1A%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 viewBox=%270 0 24 24%27 xmlns=%27http://www.w3.org/2000/svg%27><path d=%27M6 9l6 6 6-6%27/></svg>") no-repeat right 12px center / 16px', paddingRight: 40 }}
+          >
+            {BUSINESS_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+          </select>
         </div>
         <div className="btn-row spaced">
           <button className="btn btn-ghost" onClick={prevStep}>Back</button>
-          <button className="btn btn-primary" disabled={!wizardData.appName.trim() || !wizardData.androidPackage.trim()} onClick={nextStep}>Continue <span className="arrow">→</span></button>
+          <button className="btn btn-primary" onClick={nextStep}>Continue <span className="arrow">→</span></button>
         </div>
       </div>
     </div>
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // STEP 3 — Social Sources
+  // STEP 3 — Review Sources
   // ─────────────────────────────────────────────────────────────────────────
-  const renderStep3 = () => (
-    <div className={`step-pane ${currentStep === 3 ? 'active' : ''}`}>
-      <div className="card step-card">
-        <div className="card-head">
-          <div className="card-icon">🌐</div>
-          <div>
-            <h2>Social Media</h2>
-            <p>Connect profiles to track sentiment and mentions.</p>
-          </div>
-        </div>
+  const SOURCE_OPTIONS = ['Social Media', 'Website / URL', 'Personal Data', 'Play Store']
+  const renderStep3 = () => {
+    const options = [...SOURCE_OPTIONS]
+    if (wizardData.businessType === 'App-based' && !options.includes('App Store')) {
+      options.push('App Store')
+    }
 
-        {/* Platform Selection */}
-        <div className="platform-selector">
-          {SOCIAL_PLATFORMS.map(p => (
-            <button 
-              key={p} 
-              className={`platform-btn ${socialPlatform === p ? 'active' : ''}`}
-              onClick={() => setSocialPlatform(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+    const toggleSource = (src) => {
+      handleUpdate('noSystem', false)
+      setWizardData(prev => {
+        const current = prev.reviewSources || []
+        const updated = current.includes(src) ? current.filter(x => x !== src) : [...current, src]
+        return { ...prev, reviewSources: updated }
+      })
+    }
 
-        {/* Add row */}
-        <div className="social-add-wrap">
-          <div className="field-group" style={{ marginBottom: 0 }}>
-            <label>Handle / Identifier</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                placeholder={socialPlatform === 'Instagram' || socialPlatform === 'Twitter/X' ? '@brandname' : socialPlatform === 'Reddit' ? 'r/community' : 'Channel or Handle ID'}
-                value={socialHandle}
-                onChange={e => setSocialHandle(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addSocialSource()}
-                style={{ flex: 1 }}
-              />
-              <button className="btn btn-secondary" style={{ flexShrink: 0 }} onClick={addSocialSource}>+ Add Source</button>
+    return (
+      <div className={`step-pane ${currentStep === 3 ? 'active' : ''}`}>
+        <div className="card step-card">
+          <div className="card-head">
+            <div className="card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div>
+              <h2>Review Sources</h2>
+              <p>Where do your customers leave feedback?</p>
             </div>
           </div>
-          {socialError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 8, fontWeight: 500 }}>{socialError}</div>}
-        </div>
-
-        {/* Sources list */}
-        {wizardData.socialSources.length === 0 ? (
-          <div className="empty-state">
-            <span>🔍</span>
-            <p>No social sources added yet</p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+            {options.map(opt => {
+              const isSelected = wizardData.reviewSources.includes(opt) && !wizardData.noSystem
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggleSource(opt)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '16px', background: isSelected ? 'var(--primary-glow)' : 'var(--surface2)',
+                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-sm)', cursor: 'pointer', textAlign: 'left',
+                    color: isSelected ? 'var(--primary)' : 'var(--text)', fontWeight: 500,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {opt}
+                  {isSelected && <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>}
+                </button>
+              )
+            })}
           </div>
-        ) : (
-          <div className="source-list">
-            {wizardData.socialSources.map((s, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
-                <div className="source-tag">
-                  <div>
-                    <span className="source-platform">{s.platform}</span>
-                    <span className="source-handle">{s.handle}</span>
+
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text3)' }}>OR</span>
+          </div>
+
+          <button
+            onClick={() => handleUpdate('noSystem', true)}
+            style={{
+              width: '100%', padding: '16px', background: wizardData.noSystem ? 'var(--primary-glow)' : 'var(--surface)',
+              border: `1px solid ${wizardData.noSystem ? 'var(--primary)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: wizardData.noSystem ? 'var(--primary)' : 'var(--text2)',
+              fontWeight: 500, transition: 'all 0.2s', marginBottom: 12
+            }}
+          >
+            I don't have a review collection system
+          </button>
+
+          <div className="btn-row spaced">
+            <button className="btn btn-ghost" onClick={prevStep}>Back</button>
+            <button 
+              className="btn btn-primary" 
+              onClick={nextStep}
+              disabled={wizardData.reviewSources.length === 0 && !wizardData.noSystem}
+            >
+              Continue <span className="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STEP 4 — Data Input (Dynamic based on Step 3)
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderStep4 = () => {
+    if (wizardData.noSystem) {
+      return (
+        <div className={`step-pane ${currentStep === 4 ? 'active' : ''}`}>
+          <div className="card step-card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>No Data Input Required</h2>
+            <p style={{ color: 'var(--text2)', marginBottom: 32, maxWidth: 400, margin: '0 auto' }}>
+              Since you don't have an existing review collection system, you can skip this step.
+            </p>
+            <div className="btn-row spaced" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={prevStep}>Back</button>
+              <button className="btn btn-primary" onClick={nextStep}>Continue <span className="arrow">→</span></button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    const showApps = wizardData.reviewSources.includes('Play Store') || wizardData.reviewSources.includes('App Store')
+    const showSocial = wizardData.reviewSources.includes('Social Media')
+    const showWeb = wizardData.reviewSources.includes('Website / URL')
+    const showPersonal = wizardData.reviewSources.includes('Personal Data')
+
+    return (
+      <div className={`step-pane ${currentStep === 4 ? 'active' : ''}`}>
+        <div className="card step-card">
+          <div className="card-head" style={{ marginBottom: 16 }}>
+            <div className="card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div>
+              <h2>Data Input</h2>
+              <p>Provide links or IDs for the sources you selected.</p>
+            </div>
+          </div>
+
+          <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 8, paddingBottom: 16 }}>
+            {showApps && (
+              <div style={{ marginBottom: 32 }}>
+                <div className="divider-label">App Details</div>
+                <div className="field-group">
+                  <label>App Name</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <div className="search-input-wrap" style={{ flex: 1 }}>
+                      <input 
+                        type="text" 
+                        placeholder="Search your app..." 
+                        value={appSearchQuery} 
+                        onChange={e => handleAppSearch(e.target.value)} 
+                        onFocus={() => appSearchQuery.trim().length > 1 && setIsSearching(true)}
+                        onBlur={() => setTimeout(() => setIsSearching(false), 200)}
+                      />
+                      {isSearching && appSearchResults.length > 0 && (
+                        <div className="search-dropdown">
+                          {appSearchResults.map((app, i) => (
+                            <div key={i} className="search-result-item" onMouseDown={() => handleSelectMockApp(app)}>
+                              <div className="app-icon-ph">{app.name.charAt(0)}</div>
+                              <div>
+                                <div className="app-res-title">{app.name}</div>
+                                <div className="app-res-dev">{app.developer}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ flexShrink: 0, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onClick={handleAutofillClick}
+                      disabled={autofillLoading || appSearchQuery.trim().length <= 1}
+                    >
+                      {autofillLoading ? <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '✨ Autofill'}
+                    </button>
                   </div>
-                  <button className="source-remove" onClick={() => removeSocialSource(i)}>✕</button>
+                  {appVerified && autofillIcon && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '8px 12px', background: 'rgba(31,77,59,0.06)', borderRadius: 8, border: '1px solid rgba(31,77,59,0.15)' }}>
+                      <img src={autofillIcon} alt="App icon" style={{ width: 36, height: 36, borderRadius: 8 }} />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--primary)' }}>✓ App details filled automatically</div>
+                      </div>
+                    </div>
+                  )}
+                  {autofillError && <div className="wiz-alert wiz-alert--error" style={{ marginTop: 10 }}>⚠ {autofillError}</div>}
                 </div>
-                {s.verified && (
-                  <div className="mock-preview-card">
-                    <div className="mock-preview-row">
-                      <span className="mock-icon-success">✔</span> Profile detected
-                    </div>
-                    <div className="mock-preview-row">
-                      <span className="mock-icon-success">✔</span> Public data available
-                    </div>
+                
+                {wizardData.reviewSources.includes('Play Store') && (
+                  <div className="field-group">
+                    <label>Android Package <span className="opt">(e.g. com.example.app)</span></label>
+                    <input type="text" value={wizardData.androidPackage} onChange={e => handleManualPackage(e.target.value)} />
+                    {packageError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 4 }}>{packageError}</div>}
+                  </div>
+                )}
+                
+                {wizardData.reviewSources.includes('App Store') && (
+                  <div className="field-group">
+                    <label>iOS App ID <span className="opt">(e.g. id123456789)</span></label>
+                    <input type="text" value={wizardData.iosAppId} onChange={e => handleManualIos(e.target.value)} />
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        <div className="btn-row spaced">
-          <button className="btn btn-ghost" onClick={prevStep}>Back</button>
-          <button className="btn btn-primary" onClick={nextStep}>Continue <span className="arrow">→</span></button>
-        </div>
-      </div>
-    </div>
-  )
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // STEP 4 — Configuration
-  // ─────────────────────────────────────────────────────────────────────────
-  const renderStep4 = () => (
-    <div className={`step-pane ${currentStep === 4 ? 'active' : ''}`}>
-      <div className="card step-card">
-        <div className="card-head">
-          <div className="card-icon">⚙️</div>
-          <div>
-            <h2>Configuration</h2>
-            <p>Set your global analysis preferences.</p>
-          </div>
-        </div>
-        <div className="field-group">
-          <label>Default Timeframe <span className="req">*</span></label>
-          <select value={wizardData.timeframe} onChange={e => handleUpdate('timeframe', e.target.value)}>
-            {TIMEFRAMES.map(t => <option key={t}>{t}</option>)}
-          </select>
-        </div>
-        <div className="toggle-row">
-          <div>
-            <div className="toggle-label">Enable real-time alerts</div>
-            <div className="toggle-sub">Get notified on negative sentiment spikes</div>
-          </div>
-          <label className="toggle">
-            <input type="checkbox" checked={wizardData.alertsEnabled} onChange={e => handleUpdate('alertsEnabled', e.target.checked)} />
-            <span className="track"><span className="thumb" /></span>
-          </label>
-        </div>
-        <div className="btn-row spaced">
-          <button className="btn btn-ghost" onClick={prevStep}>Back</button>
-          <button className="btn btn-primary" onClick={nextStep}>Continue <span className="arrow">→</span></button>
-        </div>
-      </div>
-    </div>
-  )
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // STEP 5 — Review & Complete (saves project to DB)
-  // ─────────────────────────────────────────────────────────────────────────
-  const renderStep5 = () => (
-    <div className={`step-pane ${currentStep === 5 ? 'active' : ''}`}>
-      <div className="card step-card">
-        <div className="card-head">
-          <div className="card-icon">✨</div>
-          <div>
-            <h2>Review & Complete</h2>
-            <p>Confirm your setup before saving.</p>
-          </div>
-        </div>
-        <div className="summary-grid" style={{ marginBottom: 24 }}>
-          {[
-            { k: 'Company', v: wizardData.companyName },
-            { k: 'App Name', v: wizardData.appName },
-            { k: 'Android Package', v: wizardData.androidPackage },
-            { k: 'iOS App ID', v: wizardData.iosAppId },
-            { k: 'Timeframe', v: wizardData.timeframe },
-            { k: 'Alerts', v: wizardData.alertsEnabled ? 'Enabled' : 'Disabled' }
-          ].map(({ k, v }) => (
-            <div key={k} className="summary-item">
-              <div className="summary-key">{k}</div>
-              <div className="summary-val">{v || <span className="empty">—</span>}</div>
-            </div>
-          ))}
-          <div className="summary-item" style={{ gridColumn: '1/-1' }}>
-            <div className="summary-key">Social Sources</div>
-            <div className="summary-val">
-              {wizardData.socialSources.length === 0
-                ? <span className="empty">None added</span>
-                : wizardData.socialSources.map((s, i) => (
-                    <span key={i} style={{ display: 'inline-block', marginRight: 8, color: 'var(--primary)' }}>
-                      {s.platform}: {s.handle}
-                    </span>
+            {showSocial && (
+              <div style={{ marginBottom: 32 }}>
+                <div className="divider-label">Social Media</div>
+                <div className="platform-selector">
+                  {SOCIAL_PLATFORMS.map(p => (
+                    <button key={p} className={`platform-btn ${socialPlatform === p ? 'active' : ''}`} onClick={() => setSocialPlatform(p)}>{p}</button>
                   ))}
+                </div>
+                <div className="social-add-wrap">
+                  <div className="field-group" style={{ marginBottom: 0 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input type="text" placeholder={socialPlatform === 'Instagram' || socialPlatform === 'Twitter/X' ? '@brandname' : 'Channel or Handle ID'} value={socialHandle} onChange={e => setSocialHandle(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSocialSource()} style={{ flex: 1 }} />
+                      <button className="btn btn-secondary" style={{ flexShrink: 0 }} onClick={addSocialSource}>Add</button>
+                    </div>
+                  </div>
+                  {socialError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 8, fontWeight: 500 }}>{socialError}</div>}
+                </div>
+                {wizardData.socialSources.length > 0 && (
+                  <div className="source-list">
+                    {wizardData.socialSources.map((s, i) => (
+                      <div key={i} className="source-tag" style={{ marginBottom: 4 }}>
+                        <div>
+                          <span className="source-platform">{s.platform}</span><span className="source-handle">{s.handle}</span>
+                        </div>
+                        <button className="source-remove" onClick={() => removeSocialSource(i)}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showWeb && (
+              <div style={{ marginBottom: 32 }}>
+                <div className="divider-label">Website</div>
+                <div className="field-group">
+                  <label>Website URL</label>
+                  <input type="url" placeholder="https://www.example.com" value={wizardData.websiteUrl} onChange={e => handleUpdate('websiteUrl', e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {showPersonal && (
+              <div style={{ marginBottom: 32 }}>
+                <div className="divider-label">Personal Data Upload</div>
+                <div className="upload-area" onClick={() => alert("Upload dialog will open in full version")}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Click or drag CSV/JSON files here</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="btn-row spaced">
+            <button className="btn btn-ghost" onClick={prevStep}>Back</button>
+            <button className="btn btn-primary" onClick={nextStep}>Continue <span className="arrow">→</span></button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STEP 5 — Collect Feedback (Google Form)
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderStep5 = () => {
+    return (
+      <div className={`step-pane ${currentStep === 5 ? 'active' : ''}`}>
+        <div className="card step-card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+          <div style={{ width: 64, height: 64, background: 'var(--primary-glow)', color: 'var(--primary)', borderRadius: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>Start Collecting Customer Feedback</h2>
+          <p style={{ color: 'var(--text2)', marginBottom: 24, maxWidth: 420, margin: '0 auto 24px' }}>
+            Use a simple Google Form to start collecting reviews from your customers. Responses will be stored in a spreadsheet and can be analyzed by our AI.
+          </p>
+          
+          <div style={{ background: 'var(--surface2)', padding: '16px', borderRadius: 'var(--radius-sm)', marginBottom: 32, maxWidth: 420, margin: '0 auto 32px', fontSize: '0.85rem', color: 'var(--text2)' }}>
+            <strong>Note:</strong> Responses will be stored in Google Sheets and can be connected later for analysis.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+            <a 
+              href="https://docs.google.com/forms/d/11F25MmwiCf3icVepQhhYITwH3ugsYp23VsBlHZ2U-iQ/copy" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn btn-primary btn-lg"
+              style={{ textDecoration: 'none', width: '100%', maxWidth: 300, justifyContent: 'center' }}
+            >
+              Open Feedback Form <span className="arrow">↗</span>
+            </a>
+            
+            <button 
+              className="btn btn-ghost" 
+              onClick={nextStep}
+              style={{ width: '100%', maxWidth: 300, justifyContent: 'center' }}
+            >
+              I've started collecting responses
+            </button>
+            
+            <div style={{ marginTop: 16 }}>
+               <button className="btn btn-ghost" onClick={prevStep} style={{ fontSize: '0.85rem' }}>← Back</button>
             </div>
           </div>
         </div>
-        {step5Error && <div className="wiz-alert wiz-alert--error">⚠ {step5Error}</div>}
-        <div className="btn-row spaced">
-          <button className="btn btn-ghost" onClick={prevStep}>Back</button>
-          <button className="btn btn-primary" onClick={handleCompleteSetup} disabled={step5Loading}>
-            {step5Loading ? <span className="loader" /> : 'Complete Setup'}
-          </button>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STEP 6 — Processing (Loader)
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderStep6 = () => {
+    return (
+      <div className={`step-pane ${currentStep === 6 ? 'active' : ''}`}>
+        <div className="card step-card" style={{ textAlign: 'center', padding: '64px 32px' }}>
+          <div className="pulse-ring" style={{ margin: '0 auto 40px' }}>
+             <svg className="proc-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.5" style={{ position: 'absolute', top: '50%', left: '50%', marginTop: -24, marginLeft: -24 }}>
+               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+             </svg>
+          </div>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>Ready to finalize setup?</h2>
+          <p style={{ color: 'var(--text2)', marginBottom: 32 }}>
+            We'll configure your workspace and begin fetching actionable insights.
+          </p>
+          {step5Error && <div className="wiz-alert wiz-alert--error" style={{ textAlign: 'left', marginBottom: 24 }}>⚠ {step5Error}</div>}
+          <div className="btn-row spaced" style={{ justifyContent: 'center' }}>
+            <button className="btn btn-ghost" onClick={prevStep} disabled={step5Loading}>Back</button>
+            <button className="btn btn-primary btn-lg" onClick={handleCompleteSetup} disabled={step5Loading}>
+              {step5Loading ? <><span className="loader" /> Processing...</> : 'Complete Setup'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────────────
@@ -889,6 +1172,7 @@ export default function Admin() {
         {renderStep3()}
         {renderStep4()}
         {renderStep5()}
+        {renderStep6()}
       </div>
     </div>
   );

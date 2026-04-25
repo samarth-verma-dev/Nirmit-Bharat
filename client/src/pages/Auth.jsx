@@ -205,67 +205,68 @@ export default function Auth() {
   // ── INVITE VALIDATION SCREEN ──────────────────────────────────────────────
   if (step === 'invite') {
     return (
-      <div className="screen active">
+      <div className="screen active" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <div className="bg-grid" />
-        <div className="login-wrap">
-          <div className="logo-mark">
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="10" fill="url(#lgCode)" />
+        <div className="login-wrap" style={{ maxWidth: 440 }}>
+          <div className="logo-mark" style={{ marginBottom: 32, justifyContent: 'center' }}>
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="8" fill="var(--primary)" />
               <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <defs>
-                <linearGradient id="lgCode" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="var(--primary)" />
-                  <stop offset="1" stopColor="var(--primary-dark)" />
-                </linearGradient>
-              </defs>
             </svg>
-            <span>ReviewAI</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>ReviewAI</span>
           </div>
 
-          <div className="card login-card">
+          <div className="card login-card" style={{ padding: '36px 32px' }}>
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 6 }}>Join Your Workspace</h1>
-              <p className="sub">Enter your email and the invite code sent by your admin.</p>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, color: 'var(--text)', letterSpacing: '-0.02em' }}>Join Workspace</h1>
+              <p style={{ color: 'var(--text2)', fontSize: '0.95rem' }}>Enter your details to access company insights.</p>
             </div>
 
             <div className="field-group">
-              <label>Your Email Address</label>
+              <label>Full Name</label>
               <input
-                type="email"
-                placeholder="you@company.com"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                autoFocus
+                type="text"
+                placeholder="Jane Doe"
+                onChange={() => {}} 
               />
             </div>
 
             <div className="field-group">
-              <label>Invite Code</label>
+              <label>Work Email</label>
+              <input
+                type="email"
+                placeholder="jane@company.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="field-group" style={{ marginBottom: 24 }}>
+              <label>Referral / Invite Code</label>
               <input
                 type="text"
                 placeholder="e.g. REVIEW-AB12"
                 value={companyCode}
                 onChange={e => setCompanyCode(e.target.value)}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}
                 onKeyDown={e => e.key === 'Enter' && handleCodeSubmit()}
               />
             </div>
 
             {codeError && <div className="wiz-alert wiz-alert--error">⚠ {codeError}</div>}
 
-            <button
-              className="btn btn-primary btn-full"
-              disabled={!companyCode.trim() || codeLoading}
+            <button 
+              className="btn btn-primary btn-full" 
               onClick={handleCodeSubmit}
+              disabled={!companyCode.trim() || codeLoading}
             >
-              {codeLoading ? <span className="loader" /> : 'Join Workspace →'}
+              {codeLoading ? <span className="loader" /> : 'Continue to Login →'}
             </button>
-
+            
             <p className="hint-link" style={{ marginTop: 16 }}>
               <a href="#" onClick={e => { e.preventDefault(); navigate('/') }}>← Back to role selection</a>
             </p>
           </div>
-
           <p className="footer-note">© 2026 ReviewAI Inc. · Privacy · Terms</p>
         </div>
       </div>
@@ -274,29 +275,23 @@ export default function Auth() {
 
   // ── MAIN AUTH SCREEN ─────────────────────────────────────────────────────
   return (
-    <div className="screen active">
+    <div className="screen active" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div className="bg-grid" />
-      <div className="login-wrap">
+      <div className="login-wrap" style={{ maxWidth: 440 }}>
 
-        <div className="logo-mark">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="10" fill="url(#lgAuth)" />
+        <div className="logo-mark" style={{ marginBottom: 32, justifyContent: 'center' }}>
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="8" fill="var(--primary)" />
             <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <defs>
-              <linearGradient id="lgAuth" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stopColor="var(--primary)" />
-                <stop offset="1" stopColor="var(--primary-dark)" />
-              </linearGradient>
-            </defs>
           </svg>
-          <span>ReviewAI</span>
+          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>ReviewAI</span>
         </div>
 
-        <div className="card login-card">
+        <div className="card login-card" style={{ padding: '36px 32px' }}>
           {/* Role badge */}
           <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 600, padding: '4px 12px', borderRadius: 20, ...roleBadgeStyle }}>
-              {isEmployee ? '📊' : '⚙️'} Signing in as {roleLabel}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: 20, ...roleBadgeStyle }}>
+              {roleLabel} Portal
             </span>
             <button
               onClick={() => navigate('/')}
@@ -308,14 +303,32 @@ export default function Auth() {
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="auth-tabs">
-            <button className={`auth-tab${isLogin ? ' active' : ''}`} onClick={() => switchMode('login')}>Login</button>
-            <button className={`auth-tab${!isLogin ? ' active' : ''}`} onClick={() => switchMode('signup')}>Sign Up</button>
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+              {isLogin ? 'Welcome back' : 'Create account'}
+            </h1>
+            <p style={{ color: 'var(--text2)', fontSize: '0.95rem' }}>
+              {isLogin ? `Sign in to your ${roleLabel} portal` : 'Get started with ReviewAI today'}
+            </p>
           </div>
 
-          <h1>{isLogin ? 'Welcome back' : 'Create account'}</h1>
-          <p className="sub">{isLogin ? `Sign in to your ${roleLabel} portal` : 'Get started with ReviewAI today'}</p>
+          {/* Tabs */}
+          <div className="auth-tabs" style={{ display: 'flex', background: 'var(--surface2)', padding: 4, borderRadius: 'var(--radius-sm)', marginBottom: 24, border: 'none' }}>
+            <button 
+              className={`auth-tab ${isLogin ? 'active' : ''}`} 
+              onClick={() => switchMode('login')}
+              style={{ flex: 1, padding: '8px 0', border: 'none', background: isLogin ? 'var(--surface)' : 'transparent', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: isLogin ? 'var(--text)' : 'var(--text2)', boxShadow: isLogin ? 'var(--shadow-sm)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              Login
+            </button>
+            <button 
+              className={`auth-tab ${!isLogin ? 'active' : ''}`} 
+              onClick={() => switchMode('signup')}
+              style={{ flex: 1, padding: '8px 0', border: 'none', background: !isLogin ? 'var(--surface)' : 'transparent', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: !isLogin ? 'var(--text)' : 'var(--text2)', boxShadow: !isLogin ? 'var(--shadow-sm)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              Sign Up
+            </button>
+          </div>
 
           <div className="field-group">
             <label>Email address</label>
@@ -337,21 +350,22 @@ export default function Auth() {
             </div>
           )}
 
-          {error && <div className="wiz-alert wiz-alert--error">⚠ {error}</div>}
-          {successMsg && <div className="wiz-alert wiz-alert--success">✓ {successMsg}</div>}
+          {error && <div className="wiz-alert wiz-alert--error" style={{ marginTop: 16 }}>⚠ {error}</div>}
+          {successMsg && <div className="wiz-alert wiz-alert--success" style={{ marginTop: 16 }}>✓ {successMsg}</div>}
 
-          <button className="btn btn-primary btn-full" disabled={!isValid() || loading} onClick={handleSubmit}>
+          <button className="btn btn-primary btn-full" disabled={!isValid() || loading} onClick={handleSubmit} style={{ marginTop: 16 }}>
             {loading ? <span className="loader" /> : isLogin ? 'Login' : 'Sign Up'}
           </button>
 
-          <p className="hint-link">
-            {isLogin
-              ? <><>Don't have an account? </><a href="#" onClick={e => { e.preventDefault(); switchMode('signup') }}>Sign up</a></>
-              : <><>Already have an account? </><a href="#" onClick={e => { e.preventDefault(); switchMode('login') }}>Login</a></>}
-          </p>
+          {isEmployee && !isLogin && !validatedCompanyId && (
+            <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: 12, textAlign: 'center' }}>
+              Note: You need a valid invite to join a workspace.
+            </p>
+          )}
+
         </div>
 
-        <p className="footer-note">© 2026 ReviewAI Inc. · Privacy · Terms</p>
+        <p className="footer-note" style={{ textAlign: 'center' }}>© 2026 ReviewAI Inc. · Privacy · Terms</p>
       </div>
     </div>
   )

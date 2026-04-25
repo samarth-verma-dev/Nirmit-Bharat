@@ -15,10 +15,10 @@ import {
   RadialBarChart,
   RadialBar,
 } from "recharts";
-import { 
+import {
   Search, LayoutDashboard, Radar as IconRadar, TrendingUp, Users, Settings, Plus, Sparkles, CheckCircle2, MoreVertical, Star, Smile, Database
 } from 'lucide-react';
-import styles from "./Dashboard.module.css";
+import styles from "./dashboard.module.css";
 
 import analyticsData from "../../../analytics_summary_fast.json";
 
@@ -28,7 +28,7 @@ import analyticsData from "../../../analytics_summary_fast.json";
 const fetchAnalyticsData = () => {
   return new Promise((resolve) => {
     const overall = analyticsData.overall;
-    
+
     // Process ratingData from topTopics
     const maxTopicCount = Math.max(...overall.topTopics.map(t => t.count));
     const bars = overall.topTopics.slice(0, 4).map((t) => ({
@@ -122,7 +122,7 @@ function Sidebar() {
           <p className={styles.logoSub}>AI Analytics Lab</p>
         </div>
       </div>
-      
+
       <nav className={styles.sidebarNav}>
         <a href="#" className={`${styles.navItem} ${styles.active}`}>
           <LayoutDashboard size={20} />
@@ -394,7 +394,7 @@ export default function Dashboard() {
   return (
     <div className={styles.dashboardContainer}>
       <Sidebar />
-      
+
       <main className={styles.mainContent}>
         {/* Top Navigation */}
         <header className={styles.topNav}>
@@ -419,7 +419,7 @@ export default function Dashboard() {
               <Star size={24} fill="currentColor" />
             </div>
           </div>
-          
+
           <div className={styles.summaryCard}>
             <div>
               <p className={styles.summaryTitle}>SENTIMENT SCORE</p>

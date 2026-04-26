@@ -31,10 +31,6 @@ export const AuthProvider = ({ children }) => {
       } else {
         setRole(null)
         setLoading(false)
-        if (_event === 'SIGNED_OUT') {
-          // Force UI update and clear stale state by hard redirecting
-          window.location.href = '/auth'
-        }
       }
     })
 

@@ -1,6 +1,6 @@
 import {
-  RadialBarChart,
-  RadialBar,
+  PieChart,
+  Pie,
   Cell,
   ResponsiveContainer
 } from 'recharts';
@@ -69,9 +69,10 @@ function RatingBarsCard({ data }) {
 function DonutCard({ data }) {
   if (!data) return <div className={styles.card}>Loading Sentiment...</div>;
 
-  const radialData = [
-    { name: "track", value: 100, fill: "rgba(31, 77, 59, 0.08)" },
-    { name: data.label, value: data.pct, fill: "#1F4D3B" },
+  const pieData = [
+    { name: "Positive", value: data.posPct, fill: "#1F4D3B" },
+    { name: "Neutral", value: data.neuPct, fill: "#9CA3AF" },
+    { name: "Negative", value: data.negPct, fill: "#dc2626" },
   ];
 
   return (
@@ -86,25 +87,26 @@ function DonutCard({ data }) {
       <div className={styles.donutWrapper}>
         <div className={styles.donutContainer}>
           <ResponsiveContainer width={220} height={220}>
-            <RadialBarChart
-              innerRadius="80%"
-              outerRadius="100%"
-              data={radialData}
-              startAngle={90}
-              endAngle={-270}
-              barSize={14}
-            >
-              <RadialBar dataKey="value" cornerRadius={99} background={false}>
-                {radialData.map((entry, index) => (
+            <PieChart>
+              <Pie
+                data={pieData}
+                innerRadius="80%"
+                outerRadius="100%"
+                startAngle={90}
+                endAngle={-270}
+                dataKey="value"
+                stroke="none"
+              >
+                {pieData.map((entry, index) => (
                   <Cell key={index} fill={entry.fill} />
                 ))}
-              </RadialBar>
-            </RadialBarChart>
+              </Pie>
+            </PieChart>
           </ResponsiveContainer>
 
           <div className={styles.donutCenter}>
-            <div className={styles.donutPct}>{data.pct}%</div>
-            <div className={styles.donutLabel}>{data.label}</div>
+            <div className={styles.donutPct}>{data.posPct}%</div>
+            <div className={styles.donutLabel}>POSITIVE</div>
           </div>
         </div>
 
@@ -114,21 +116,21 @@ function DonutCard({ data }) {
               <div className={styles.donutLegendDot} style={{ background: "#1F4D3B" }} />
               <span>Positive</span>
             </div>
-            <span className={styles.legendVal}>{data.pct}%</span>
+            <span className={styles.legendVal}>{data.posPct}%</span>
           </div>
           <div className={styles.donutLegendItem}>
             <div className={styles.legendLeft}>
-              <div className={styles.donutLegendDot} style={{ background: "rgba(31, 77, 59, 0.15)" }} />
+              <div className={styles.donutLegendDot} style={{ background: "#9CA3AF" }} />
               <span>Neutral</span>
             </div>
-            <span className={styles.legendVal}>{Math.floor((100 - data.pct) * 0.7)}%</span>
+            <span className={styles.legendVal}>{data.neuPct}%</span>
           </div>
           <div className={styles.donutLegendItem}>
             <div className={styles.legendLeft}>
               <div className={styles.donutLegendDot} style={{ background: "#dc2626" }} />
               <span>Negative</span>
             </div>
-            <span className={styles.legendVal}>{Math.ceil((100 - data.pct) * 0.3)}%</span>
+            <span className={styles.legendVal}>{data.negPct}%</span>
           </div>
         </div>
       </div>

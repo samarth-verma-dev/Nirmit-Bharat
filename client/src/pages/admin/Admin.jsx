@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { fetchAppMetadata } from '../../services/appAutofill'
+import Logo from '../../components/Logo'
+import '../auth-modern.css'
 
 const STEPS = [
   { num: 1, label: 'Basic Info' },
@@ -516,20 +518,8 @@ export default function Admin() {
   // ─────────────────────────────────────────────────────────────────────────
   const renderSidebar = () => (
     <div className="sidebar">
-      <div className="sidebar-logo">
-        <div className="logo-mark" style={{ marginBottom: 0 }}>
-          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="8" fill="url(#lgAdmin)" />
-            <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <defs>
-              <linearGradient id="lgAdmin" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#1F4D3B" />
-                <stop offset="1" stopColor="#143528" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>ReviewAI</span>
-        </div>
+      <div className="sidebar-logo" style={{ display: 'flex', justifyContent: 'center', marginBottom: 48 }}>
+        <Logo width={80} height={80} />
       </div>
 
       <div className="step-nav">
@@ -608,8 +598,9 @@ export default function Admin() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <div>
-            <h2>Basic Info</h2>
-            <p>Tell us a bit about yourself and your organization.</p>
+            <h2 className="auth-title" style={{ fontSize: '1.8rem' }}>Let’s get you set up</h2>
+            <p className="auth-subtitle" style={{ marginBottom: 0 }}>This will only take a minute</p>
+            <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 4, fontWeight: 600 }}>We’ll personalize your experience based on your business</p>
           </div>
         </div>
         <div className="field-group">
@@ -657,8 +648,9 @@ export default function Admin() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
           </div>
           <div>
-            <h2>Business Type</h2>
-            <p>What kind of business are you operating?</p>
+            <h2 className="auth-title" style={{ fontSize: '1.8rem' }}>Tell us about your business</h2>
+            <p className="auth-subtitle" style={{ marginBottom: 0 }}>So we can tailor insights and recommendations for you</p>
+            <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 4, fontWeight: 600 }}>This helps us understand where your customer feedback comes from</p>
           </div>
         </div>
         <div className="field-group" style={{ marginBottom: 24 }}>
@@ -706,8 +698,9 @@ export default function Admin() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div>
-              <h2>Review Sources</h2>
-              <p>Where do your customers leave feedback?</p>
+              <h2 className="auth-title" style={{ fontSize: '1.8rem' }}>Where do your customers share feedback?</h2>
+              <p className="auth-subtitle" style={{ marginBottom: 0 }}>Select all the places where you receive reviews—we’ll bring everything together for you</p>
+              <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 4, fontWeight: 600 }}>Connect multiple sources for a complete view of your customer experience</p>
             </div>
           </div>
           
@@ -727,7 +720,15 @@ export default function Admin() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  {opt}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 600 }}>{opt}</span>
+                    <span style={{ fontSize: '0.8rem', color: isSelected ? 'var(--primary)' : 'var(--text2)', fontWeight: 400, marginTop: 4 }}>
+                      {opt === 'Social Media' && "Track what customers are saying across social platforms"}
+                      {opt === 'Website / URL' && "Analyze feedback collected through your website"}
+                      {opt === 'Personal Data' && "Upload existing feedback and start instantly"}
+                      {(opt === 'Play Store' || opt === 'App Store') && "Understand what your app users are experiencing"}
+                    </span>
+                  </div>
                   {isSelected && <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>}
                 </button>
               )
@@ -747,7 +748,10 @@ export default function Admin() {
               fontWeight: 500, transition: 'all 0.2s', marginBottom: 12
             }}
           >
-            I don't have a review collection system
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '1rem', fontWeight: 600 }}>I don’t have a system yet</span>
+              <span style={{ fontSize: '0.8rem', color: wizardData.noSystem ? 'var(--primary)' : 'var(--text2)', fontWeight: 400 }}>We’ll help you set one up in minutes</span>
+            </div>
           </button>
 
           <div className="btn-row spaced">
@@ -773,8 +777,8 @@ export default function Admin() {
       return (
         <div className={`step-pane ${currentStep === 4 ? 'active' : ''}`}>
           <div className="card step-card" style={{ textAlign: 'center', padding: '48px 32px' }}>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>No Data Input Required</h2>
-            <p style={{ color: 'var(--text2)', marginBottom: 32, maxWidth: 400, margin: '0 auto' }}>
+            <h2 className="auth-title" style={{ fontSize: '1.5rem', marginBottom: 12 }}>No Data Input Required</h2>
+            <p className="auth-subtitle" style={{ marginBottom: 32, maxWidth: 400, margin: '0 auto' }}>
               Since you don't have an existing review collection system, you can skip this step.
             </p>
             <div className="btn-row spaced" style={{ justifyContent: 'center' }}>
@@ -799,8 +803,8 @@ export default function Admin() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </div>
             <div>
-              <h2>Data Input</h2>
-              <p>Provide links or IDs for the sources you selected.</p>
+              <h2 className="auth-title" style={{ fontSize: '1.8rem' }}>Connect your sources</h2>
+              <p className="auth-subtitle" style={{ marginBottom: 0 }}>Almost done! Link your platforms so we can start analyzing.</p>
             </div>
           </div>
 
@@ -992,9 +996,9 @@ export default function Admin() {
                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
              </svg>
           </div>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>Ready to finalize setup?</h2>
-          <p style={{ color: 'var(--text2)', marginBottom: 32 }}>
-            We'll configure your workspace and begin fetching actionable insights.
+          <h2 className="auth-title" style={{ fontSize: '1.8rem', marginBottom: 12 }}>Understanding customer sentiment...</h2>
+          <p className="auth-subtitle" style={{ marginBottom: 32 }}>
+            We're analyzing thousands of data points to uncover the insights that actually matter.
           </p>
           {step5Error && <div className="wiz-alert wiz-alert--error" style={{ textAlign: 'left', marginBottom: 24 }}>⚠ {step5Error}</div>}
           <div className="btn-row spaced" style={{ justifyContent: 'center' }}>
@@ -1017,19 +1021,28 @@ export default function Admin() {
     const joinLink = `${window.location.origin}/join?code=${inviteCode}&email=`
 
     return (
-      <div className="screen active" style={{ overflowY: 'auto' }}>
-        <div className="bg-grid" />
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px', width: '100%', position: 'relative', zIndex: 1 }}>
+      <div className="modern-auth-container">
+        {/* SVG filter for the noise effect */}
+        <svg width="0" height="0" style={{ position: 'absolute' }}>
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+          </filter>
+        </svg>
+        <div className="noise-overlay" style={{ filter: 'url(#noiseFilter)' }}></div>
+        
+        <div className="shape shape-polygon"></div>
+        <div className="shape shape-starburst"></div>
+        <div className="shape shape-circle"></div>
+        <div className="shape shape-half-circle"></div>
+        <div className="shape shape-stair"></div>
+
+        <div className="auth-card-main" style={{ maxWidth: 800, padding: '48px 32px', width: '100%', position: 'relative', zIndex: 10, maxHeight: '90vh', overflowY: 'auto' }}>
 
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-            <div className="logo-mark">
-              <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-                <rect width="36" height="36" rx="8" fill="url(#lgAdminH)" />
-                <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                <defs><linearGradient id="lgAdminH" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stopColor="#1F4D3B" /><stop offset="1" stopColor="#143528" /></linearGradient></defs>
-              </svg>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>ReviewAI — Admin</span>
+            <div className="logo-mark" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <Logo width={64} height={64} />
+              <span style={{ fontSize: '1rem', fontWeight: 600, color: '#6B7280' }}>Admin Console</span>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {companies.length > 1 && (
@@ -1178,21 +1191,37 @@ export default function Admin() {
 
   // Default wizard layout
   return (
-    <div className="screen active" id="screen-wizard" style={{ alignItems: 'stretch' }}>
-      {renderSidebar()}
-      <div className="wizard-main">
-        <div className="step-header">
-          <div className="step-badge">Step {currentStep} of {STEPS.length}</div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${pct}%` }} />
+    <div className="modern-auth-container">
+      {/* SVG filter for the noise effect */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <filter id="noiseFilter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+        </filter>
+      </svg>
+      <div className="noise-overlay" style={{ filter: 'url(#noiseFilter)' }}></div>
+      
+      <div className="shape shape-polygon"></div>
+      <div className="shape shape-starburst"></div>
+      <div className="shape shape-circle"></div>
+      <div className="shape shape-half-circle"></div>
+      <div className="shape shape-stair"></div>
+
+      <div className="auth-card-main" style={{ display: 'flex', maxWidth: 1000, width: '100%', padding: 0, overflow: 'hidden', height: '85vh' }}>
+        {renderSidebar()}
+        <div className="wizard-main" style={{ flex: 1, padding: 48, overflowY: 'auto' }}>
+          <div className="step-header">
+            <div className="step-badge">Step {currentStep} of {STEPS.length}</div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${pct}%` }} />
+            </div>
           </div>
+          {renderStep1()}
+          {renderStep2()}
+          {renderStep3()}
+          {renderStep4()}
+          {renderStep5()}
+          {renderStep6()}
         </div>
-        {renderStep1()}
-        {renderStep2()}
-        {renderStep3()}
-        {renderStep4()}
-        {renderStep5()}
-        {renderStep6()}
       </div>
     </div>
   );

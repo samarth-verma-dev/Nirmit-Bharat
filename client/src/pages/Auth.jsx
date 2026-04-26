@@ -219,73 +219,83 @@ export default function Auth() {
   if (step === 'invite') {
     return (
       <div className="modern-auth-container">
-        <div className="modern-auth-left">
-          <motion.div 
-            className="modern-auth-card"
-            initial="initial" animate="animate" exit="exit" variants={pageVariants}
-          >
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: 8, color: '#1A1A1A', letterSpacing: '-0.02em' }}>Join Workspace</h1>
-              <p style={{ color: '#666', fontSize: '0.95rem' }}>Enter your details to access company insights.</p>
-            </div>
+        {/* SVG filter for the noise effect */}
+        <svg width="0" height="0" style={{ position: 'absolute' }}>
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+          </filter>
+        </svg>
+        <div className="noise-overlay" style={{ filter: 'url(#noiseFilter)' }}></div>
+        
+        <div className="shape shape-polygon"></div>
+        <div className="shape shape-starburst"></div>
+        <div className="shape shape-circle"></div>
+        <div className="shape shape-half-circle"></div>
+        <div className="shape shape-stair"></div>
 
-            <div className="field-group">
-              <label>Full Name</label>
-              <input
-                type="text"
-                placeholder="Jane Doe"
-                onChange={() => {}} 
-              />
-            </div>
-
-            <div className="field-group">
-              <label>Work Email</label>
-              <input
-                type="email"
-                placeholder="jane@company.com"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="field-group" style={{ marginBottom: 24 }}>
-              <label>Referral / Invite Code</label>
-              <input
-                type="text"
-                placeholder="e.g. REVIEW-AB12"
-                value={companyCode}
-                onChange={e => setCompanyCode(e.target.value)}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}
-                onKeyDown={e => e.key === 'Enter' && handleCodeSubmit()}
-              />
-            </div>
-
-            {codeError && <div className="wiz-alert wiz-alert--error">⚠ {codeError}</div>}
-
-            <button 
-              className="btn btn-primary btn-full" 
-              onClick={handleCodeSubmit}
-              disabled={!companyCode.trim() || codeLoading}
-            >
-              {codeLoading ? <span className="loader" /> : 'Continue to Login →'}
-            </button>
-            
-            <p className="hint-link" style={{ marginTop: 16 }}>
-              <a href="#" onClick={e => { e.preventDefault(); navigate('/') }} style={{ color: '#8A3C38' }}>← Back to role selection</a>
-            </p>
-          </motion.div>
-        </div>
-        <div className="modern-auth-right">
-          <div className="modern-auth-grid-overlay"></div>
-          <div className="modern-auth-noise"></div>
-          <div className="modern-shapes-container">
-            <div className="shape shape-polygon"></div>
-            <div className="shape shape-starburst"></div>
-            <div className="shape shape-circle"></div>
-            <div className="shape shape-half-circle"></div>
-            <div className="shape shape-stepped"></div>
+        <motion.div 
+          className="auth-card-main"
+          initial="initial" animate="animate" exit="exit" variants={pageVariants}
+        >
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <h1 className="auth-title">Join Your Team Workspace</h1>
+            <p className="auth-subtitle">Get access to your company’s insights using the referral code provided by your admin</p>
           </div>
-        </div>
+
+          <div className="auth-input-group">
+            <label className="auth-label">Full Name</label>
+            <p style={{fontSize: '0.75rem', color: '#6B7280', marginBottom: 4}}>Enter your full name as used in your organization</p>
+            <input
+              className="auth-input"
+              type="text"
+              placeholder="Jane Doe"
+              onChange={() => {}} 
+            />
+          </div>
+
+          <div className="auth-input-group">
+            <label className="auth-label">Work Email</label>
+            <input
+              className="auth-input"
+              type="email"
+              placeholder="jane@company.com"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="auth-input-group" style={{ marginBottom: 24 }}>
+            <label className="auth-label">Referral / Invite Code</label>
+            <p style={{fontSize: '0.75rem', color: '#6B7280', marginBottom: 4}}>Enter the code shared by your admin</p>
+            <input
+              className="auth-input"
+              type="text"
+              placeholder="e.g. REVIEW-AB12"
+              value={companyCode}
+              onChange={e => setCompanyCode(e.target.value)}
+              style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}
+              onKeyDown={e => e.key === 'Enter' && handleCodeSubmit()}
+            />
+          </div>
+
+          {codeError && <div className="auth-error">⚠ {codeError.includes('Invalid invite') ? 'Invalid referral code. Please check with your admin and try again.' : codeError}</div>}
+
+          <button 
+            className="auth-button" 
+            onClick={handleCodeSubmit}
+            disabled={!companyCode.trim() || codeLoading}
+          >
+            {codeLoading ? <span className="loader" /> : 'Access Workspace'}
+          </button>
+          
+          <p className="auth-trust-microcopy" style={{ marginTop: 24 }}>
+            Your access is securely managed by your organization
+          </p>
+          
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <a href="#" onClick={e => { e.preventDefault(); navigate('/') }} style={{ color: '#6B7280', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none' }}>← Back to role selection</a>
+          </div>
+        </motion.div>
       </div>
     )
   }
@@ -293,94 +303,86 @@ export default function Auth() {
   // ── MAIN AUTH SCREEN ─────────────────────────────────────────────────────
   return (
     <div className="modern-auth-container">
-      <div className="modern-auth-left">
-        <motion.div 
-          className="modern-auth-card"
-          initial="initial" animate="animate" exit="exit" variants={pageVariants}
-        >
-          {/* Role badge */}
-          <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: 20, background: 'rgba(138, 60, 56, 0.08)', color: '#8A3C38' }}>
-              {roleLabel} Portal
-            </span>
-            <button
-              onClick={() => navigate('/')}
-              style={{ fontSize: '0.78rem', color: '#666', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = '#1A1A1A'}
-              onMouseLeave={e => e.target.style.color = '#666'}
-            >
-              — Change role
-            </button>
-          </div>
+      {/* SVG filter for the noise effect */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <filter id="noiseFilter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+        </filter>
+      </svg>
+      <div className="noise-overlay" style={{ filter: 'url(#noiseFilter)' }}></div>
+      
+      <div className="shape shape-polygon"></div>
+      <div className="shape shape-starburst"></div>
+      <div className="shape shape-circle"></div>
+      <div className="shape shape-half-circle"></div>
+      <div className="shape shape-stair"></div>
 
-          <div style={{ marginBottom: 24 }}>
-            <h1>{isLogin ? 'Welcome back' : 'Create account'}</h1>
-            <p>{isLogin ? `Sign in to your ${roleLabel} portal` : 'Get started with Analaysta today'}</p>
-          </div>
-
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4, background: '#F5F5F5', padding: 4, borderRadius: 12, marginBottom: 24 }}>
-            <button 
-              onClick={() => switchMode('login')}
-              style={{ flex: 1, padding: '10px 0', border: 'none', background: isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: isLogin ? '#1A1A1A' : '#666', boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
-            >
-              Login
-            </button>
-            <button 
-              onClick={() => switchMode('signup')}
-              style={{ flex: 1, padding: '10px 0', border: 'none', background: !isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: !isLogin ? '#1A1A1A' : '#666', boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          <div className="field-group">
-            <label>Email address</label>
-            <input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-
-          <div className="field-group">
-            <label>Password</label>
-            <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-
-          {!isLogin && (
-            <div className="field-group">
-              <label>Confirm Password</label>
-              <input type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-              {confirmPassword && password !== confirmPassword && (
-                <span style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: 2 }}>Passwords do not match</span>
-              )}
-            </div>
-          )}
-
-          {error && <div className="wiz-alert wiz-alert--error" style={{ marginTop: 16 }}>⚠ {error}</div>}
-          {successMsg && <div className="wiz-alert wiz-alert--success" style={{ marginTop: 16 }}>✓ {successMsg}</div>}
-
-          <button className="btn btn-primary btn-full" disabled={!isValid() || loading} onClick={handleSubmit} style={{ marginTop: 16 }}>
-            {loading ? <span className="loader" /> : isLogin ? 'Login' : 'Sign Up'}
-          </button>
-
-          {isEmployee && !isLogin && !validatedCompanyId && (
-            <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 12, textAlign: 'center', fontWeight: 600 }}>
-              Note: You need a valid invite to join a workspace.
-            </p>
-          )}
-
-        </motion.div>
-      </div>
-
-      <div className="modern-auth-right">
-        <div className="modern-auth-grid-overlay"></div>
-        <div className="modern-auth-noise"></div>
-        <div className="modern-shapes-container">
-          <div className="shape shape-polygon"></div>
-          <div className="shape shape-starburst"></div>
-          <div className="shape shape-circle"></div>
-          <div className="shape shape-half-circle"></div>
-          <div className="shape shape-stepped"></div>
+      <motion.div 
+        className="auth-card-main"
+        initial="initial" animate="animate" exit="exit" variants={pageVariants}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <h1 className="auth-title">{isLogin ? 'Welcome Back' : 'Create Your Account'}</h1>
+          <p className="auth-subtitle">
+            {isLogin 
+              ? 'Continue where you left off and stay connected to your customer insights' 
+              : 'Start turning customer feedback into clear, actionable insights'}
+          </p>
         </div>
-      </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, background: '#F9FAFB', padding: 6, borderRadius: 12, border: '1px solid #E5E7EB', marginBottom: 24 }}>
+          <button 
+            onClick={() => switchMode('login')}
+            style={{ flex: 1, padding: '10px 0', border: 'none', background: isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: isLogin ? '#111827' : '#6B7280', boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            Login
+          </button>
+          <button 
+            onClick={() => switchMode('signup')}
+            style={{ flex: 1, padding: '10px 0', border: 'none', background: !isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: !isLogin ? '#111827' : '#6B7280', boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        <div className="auth-input-group">
+          <label className="auth-label">Email address</label>
+          <input className="auth-input" type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+
+        <div className="auth-input-group">
+          <label className="auth-label">Password</label>
+          <input className="auth-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+
+        {!isLogin && (
+          <div className="auth-input-group">
+            <label className="auth-label">Confirm Password</label>
+            <input className="auth-input" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+            {confirmPassword && password !== confirmPassword && (
+              <span style={{ fontSize: '0.8rem', color: '#991B1B', marginTop: 4, display: 'block' }}>Passwords do not match</span>
+            )}
+          </div>
+        )}
+
+        {error && <div className="auth-error">⚠ Something doesn’t look right. Please check your details and try again.</div>}
+        {successMsg && <div className="auth-error" style={{ background: '#ECFDF5', color: '#065F46', borderColor: '#A7F3D0' }}>✓ {successMsg}</div>}
+
+        <button className="auth-button" disabled={!isValid() || loading} onClick={handleSubmit} style={{ marginTop: 8 }}>
+          {loading ? <span className="loader" /> : isLogin ? 'Access Dashboard' : 'Create Account'}
+        </button>
+
+        <p className="auth-trust-microcopy">
+          Your data is secure and encrypted • No credit card required • Setup takes less than 2 minutes
+        </p>
+
+        {isEmployee && !isLogin && !validatedCompanyId && (
+          <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 16, textAlign: 'center', fontWeight: 600 }}>
+            Note: You need a valid invite to join a workspace.
+          </p>
+        )}
+      </motion.div>
     </div>
   )
 }

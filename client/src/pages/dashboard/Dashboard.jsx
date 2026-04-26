@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, MapPin, FileText
+  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, MapPin, FileText, Inbox
 } from 'lucide-react';
 import styles from "./dashboard.module.css";
 import DashboardOverview from "./DashboardOverview";
 import LocationInsights from "./LocationInsights";
 import SentimentRadar from "./SentimentRadar";
 import RatingTrends from "./RatingTrends";
+import SupportInbox from "./SupportInbox";
 import SignOutButton from "../../components/SignOutButton";
 import { supabase } from "../../services/supabase";
+import Logo from "../../components/Logo";
 
 const FormattedSummary = ({ text }) => {
   if (!text) return null;
@@ -123,8 +125,21 @@ const fetchAnalyticsData = async () => {
     // Process sentimentData
     const total = overall.totalAnalyzed || 1;
     const pos = overall.sentiment?.POSITIVE || 0;
-    const pct = Math.round((pos / total) * 100);
-    const avgRating = (pct / 100) * 5;
+    const neg = overall.sentiment?.NEGATIVE || 0;
+    const neu = overall.sentiment?.NEUTRAL || 0;
+    
+    // Instead of mocking, calculate actual percentages
+    // If total is 0, default to some values or 0
+    const posPct = Math.round((pos / total) * 100) || 0;
+    const negPct = Math.round((neg / total) * 100) || 0;
+    const neuPct = Math.max(0, 100 - posPct - negPct);
+
+    // Calculate avgRating more accurately based on weighted sentiments
+    // POS = 5, NEU = 3, NEG = 1
+    let avgRating = 0;
+    if (total > 0) {
+      avgRating = ((pos * 5) + (neu * 3) + (neg * 1)) / total;
+    }
 
     return {
       rawData: analyticsData,
@@ -134,7 +149,7 @@ const fetchAnalyticsData = async () => {
           bars: bars,
         },
         radarData: radarData,
-        sentimentData: { pct: pct, label: "POSITIVE" },
+        sentimentData: { posPct, neuPct, negPct, label: "POSITIVE" },
         totalAnalyzed: total,
         topTopic: overall.topTopics[0]?.topic || 'general',
         topKeyword: overall.topKeywords[0]?.keyword || 'app',
@@ -162,18 +177,18 @@ const fetchAnalyticsData = async () => {
 function Sidebar({ activeView, setActiveView }) {
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.sidebarLogo}>
-        <div className={styles.logoIcon}>IE</div>
-        <div>
-          <h2 className={styles.logoTitle}>InsightEngine</h2>
-          <p className={styles.logoSub}>AI Analytics Lab</p>
-        </div>
+      <div className={styles.sidebarLogo} style={{ padding: '0 16px', marginBottom: '24px' }}>
+        <Logo width={80} height={80} light={true} />
       </div>
 
       <nav className={styles.sidebarNav}>
         <a href="#" className={`${styles.navItem} ${activeView === 'Dashboard' ? styles.active : ''}`} onClick={(e) => { e.preventDefault(); setActiveView('Dashboard'); }}>
           <LayoutDashboard size={20} />
           <span>Dashboard</span>
+        </a>
+        <a href="#" className={`${styles.navItem} ${activeView === 'Priority Inbox' ? styles.active : ''}`} onClick={(e) => { e.preventDefault(); setActiveView('Priority Inbox'); }}>
+          <Inbox size={20} color={activeView === 'Priority Inbox' ? "inherit" : "#ef4444"} />
+          <span style={activeView === 'Priority Inbox' ? {} : { color: '#ef4444', fontWeight: 600 }}>Priority Inbox 🚨</span>
         </a>
         <a href="#" className={`${styles.navItem} ${activeView === 'Location Insights' ? styles.active : ''}`} onClick={(e) => { e.preventDefault(); setActiveView('Location Insights'); }}>
           <MapPin size={20} />
@@ -320,6 +335,7 @@ export default function Dashboard() {
             {activeView === 'Rating Trends' && <RatingTrends data={globalRawData} />}
             {activeView === 'Dashboard' && <DashboardOverview parsedData={globalParsedData} rawData={globalRawData} />}
             {activeView === 'AI Summary' && <AISummaryView rawData={globalRawData} />}
+            {activeView === 'Priority Inbox' && <SupportInbox rawData={globalRawData} />}
           </>
         )}
       </main>

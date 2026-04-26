@@ -204,8 +204,25 @@ export default function Admin() {
   const handleUpdate = (key, value) =>
     setWizardData(prev => ({ ...prev, [key]: value }))
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length))
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1))
+  const activeSteps = STEPS.filter(s => wizardData.noSystem || s.num !== 5)
+
+  useEffect(() => {
+    if (!activeSteps.some(s => s.num === currentStep)) {
+      setCurrentStep(1)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, wizardData.noSystem])
+
+  const nextStep = () => setCurrentStep(prev => {
+    const currentIndex = activeSteps.findIndex(s => s.num === prev)
+    if (currentIndex >= 0 && currentIndex < activeSteps.length - 1) return activeSteps[currentIndex + 1].num
+    return prev
+  })
+  const prevStep = () => setCurrentStep(prev => {
+    const currentIndex = activeSteps.findIndex(s => s.num === prev)
+    if (currentIndex > 0) return activeSteps[currentIndex - 1].num
+    return prev
+  })
 
   // ── STEP 1: Save company to Supabase ───────────────────────────────────────
   const handleStep1Continue = async () => {
@@ -314,6 +331,8 @@ export default function Admin() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+    localStorage.removeItem('adminOnboardingStep')
+    localStorage.removeItem('adminOnboardingData')
     navigate('/', { replace: true })
   }
 
@@ -491,7 +510,8 @@ export default function Admin() {
   const removeSocialSource = (idx) =>
     setWizardData(prev => ({ ...prev, socialSources: prev.socialSources.filter((_, i) => i !== idx) }))
 
-  const pct = ((currentStep - 1) / (STEPS.length - 1)) * 100
+  const currentIndex = activeSteps.findIndex(s => s.num === currentStep)
+  const pct = (currentIndex / (activeSteps.length - 1)) * 100
 
   // ─────────────────────────────────────────────────────────────────────────
   // SIDEBAR
@@ -515,13 +535,15 @@ export default function Admin() {
       </div>
 
       <div className="step-nav">
-        {STEPS.map(step => {
+        {activeSteps.map((step, index) => {
           let cls = ''
           if (step.num === currentStep) cls = 'active'
-          else if (step.num < currentStep) cls = 'done'
+          // A step is done if its actual index in activeSteps is less than currentIndex
+          else if (activeSteps.findIndex(s => s.num === step.num) < currentIndex) cls = 'done'
+          
           return (
             <div key={step.num} className={`nav-item ${cls}`}>
-              <div className="nav-num">{step.num}</div>
+              <div className="nav-num">{index + 1}</div>
               <div className="nav-label">{step.label}</div>
             </div>
           )

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import styles from './landing.module.css'
 
 const AdminIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,10 +37,7 @@ export default function RoleSelect() {
   const navigate = useNavigate()
   const { user, role, loading } = useAuth()
   
-  // stage: 'landing' or 'role'
   const [stage, setStage] = useState('landing')
-  const [hoveredRole, setHoveredRole] = useState(null)
-  const [selectedRole, setSelectedRole] = useState(null)
 
   useEffect(() => {
     if (!loading && user && role) {
@@ -49,109 +47,147 @@ export default function RoleSelect() {
   }, [user, role, loading, navigate])
 
   const handleSelect = (roleId) => {
-    setSelectedRole(roleId)
-    setTimeout(() => {
-      navigate('/auth', { state: { role: roleId } })
-    }, 180)
+    navigate('/auth', { state: { role: roleId } })
   }
 
-  return (
-    <div className="screen active" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <div className="bg-grid" />
+  // ── ROLE SELECTION VIEW ────────────────────────────────────────────────
+  if (stage === 'role') {
+    return (
+      <div className={styles.landingContainer}>
+        <div className="bg-grid" />
+        <div className={styles.roleSelectStage}>
+          <div className={styles.brandHeader} style={{ marginBottom: '2rem', justifyContent: 'center' }}>
+            <div className={styles.logoIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+            </div>
+            <span className={styles.brandName}>Analaysta</span>
+          </div>
 
-      <div className="role-wrap" style={{ maxWidth: 500, width: '100%' }}>
-        {/* Logo */}
-        <div className="logo-mark" style={{ marginBottom: stage === 'landing' ? 24 : 40, justifyContent: 'center' }}>
-          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="8" fill="var(--primary)" />
-            <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text)' }}>ReviewAI</span>
-        </div>
+          <h2 className={styles.roleTitle}>Welcome to Analaysta</h2>
+          <p className={styles.roleSub}>Select your role to continue</p>
 
-        {stage === 'landing' ? (
-          <div style={{ textAlign: 'center', animation: 'fadeUp 0.3s ease' }}>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 16, lineHeight: 1.1 }}>
-              Turn Customer Reviews Into Actionable Insights
-            </h1>
-            <p style={{ color: 'var(--text2)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.5, padding: '0 20px' }}>
-              The modern platform for collecting, analyzing, and responding to customer feedback using AI.
-            </p>
+          <div style={{ width: '100%' }}>
+            {roles.map((r) => (
+              <button
+                key={r.id}
+                className={styles.roleCard}
+                onClick={() => handleSelect(r.id)}
+              >
+                <div className={styles.roleIconWrapper}>
+                  {r.icon}
+                </div>
+                <div style={{ textAlign: 'left', flex: 1 }}>
+                  <div className={styles.roleCardTitle}>{r.title}</div>
+                  <div className={styles.roleCardDesc}>{r.description}</div>
+                </div>
+                <div style={{ color: '#1F4D3A' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 24 }}>
             <button 
-              className="btn btn-primary btn-lg" 
-              style={{ width: '100%', maxWidth: 300, borderRadius: 'var(--radius)' }}
-              onClick={() => setStage('role')}
+              onClick={() => setStage('landing')} 
+              style={{ background: 'transparent', border: 'none', color: '#1F4D3A', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
             >
-              Get Started <span className="arrow">→</span>
+              ← Back
             </button>
           </div>
-        ) : (
-          <div style={{ animation: 'fadeUp 0.3s ease', width: '100%' }}>
-            {/* Heading */}
-            <div style={{ textAlign: 'center', marginBottom: 32 }}>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text)', marginBottom: 8 }}>
-                Welcome to ReviewAI
-              </h1>
-              <p style={{ color: 'var(--text2)', fontSize: '0.95rem' }}>
-                Select your role to continue
-              </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── LANDING VIEW ──────────────────────────────────────────────────────
+  return (
+    <div className={styles.landingContainer}>
+      <div className="bg-grid" />
+      <div className={styles.layoutGrid}>
+        {/* Left Column (Content) */}
+        <div className={styles.leftCol}>
+          <div className={styles.brandHeader}>
+            <div className={styles.logoIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+            </div>
+            <span className={styles.brandName}>Analaysta</span>
+          </div>
+
+          <h1 className={styles.headline}>
+            Turn Insights into Impactful Action with <span className={styles.headlineHighlight}>Analaysta</span>
+          </h1>
+          <div className={styles.decorativeStroke}></div>
+          <p className={styles.subheadline}>
+            The modern platform for collecting, analyzing, and responding to customer feedback using AI.
+          </p>
+          <button className={styles.ctaBtn} onClick={() => setStage('role')}>
+            Get Started <span style={{ fontSize: '1.2em', lineHeight: 1 }}>→</span>
+          </button>
+        </div>
+
+        {/* Right Column (Visuals) */}
+        <div className={styles.rightCol}>
+          <div className={styles.imageComposition}>
+            <img src="/indian_large_business.png" alt="Large Business Owner" className={styles.baseImage1} />
+            <img src="/indian_small_business.png" alt="Small Business Owner" className={styles.baseImage2} />
+
+            {/* Static Glass Cards */}
+            <div className={`${styles.glassCard} ${styles.cardAnalysis}`}>
+              <div className={styles.cardAnalysisTitle}>Customer Review Analysis</div>
+              <div className={styles.donutWrapper}>
+                <div className={styles.donutCircle}>
+                  <div className={styles.donutInner}>86%</div>
+                </div>
+                <div className={styles.sentimentPills}>
+                  <div className={`${styles.pill} ${styles.pillGreen}`}>Positive</div>
+                  <div className={`${styles.pill} ${styles.pillNeutral}`}>Neutral</div>
+                  <div className={`${styles.pill} ${styles.pillRed}`}>Negative</div>
+                </div>
+              </div>
+              <div className={styles.confidenceBadge}>
+                <div className={styles.dot}></div> AI Confidence: High
+              </div>
             </div>
 
-            {/* Role Cards */}
-            <div className="role-cards" style={{ width: '100%' }}>
-              {roles.map((role) => {
-                const isHovered = hoveredRole === role.id
-                const isSelected = selectedRole === role.id
-
-                return (
-                  <button
-                    key={role.id}
-                    className={`role-card${isHovered ? ' role-card--hover' : ''}${isSelected ? ' role-card--selected' : ''}`}
-                    onClick={() => handleSelect(role.id)}
-                    onMouseEnter={() => setHoveredRole(role.id)}
-                    onMouseLeave={() => setHoveredRole(null)}
-                    style={{
-                      background: 'var(--surface)',
-                      borderColor: isHovered || isSelected ? 'var(--primary)' : 'var(--border)',
-                      boxShadow: isHovered ? 'var(--shadow)' : 'var(--shadow-sm)',
-                    }}
-                  >
-                    <div style={{ 
-                      width: 48, height: 48, borderRadius: 'var(--radius-sm)', 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: isHovered || isSelected ? 'var(--primary-glow)' : 'var(--surface2)',
-                      color: isHovered || isSelected ? 'var(--primary)' : 'var(--text2)',
-                      transition: 'all 0.2s ease'
-                    }}>
-                      {role.icon}
-                    </div>
-                    <div className="role-card__body" style={{ textAlign: 'left', flex: 1, paddingLeft: 16 }}>
-                      <div className="role-card__title" style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-                        {role.title}
-                      </div>
-                      <div className="role-card__desc" style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>
-                        {role.description}
-                      </div>
-                    </div>
-                    <div className="role-card__arrow" style={{ color: isHovered ? 'var(--primary)' : 'var(--border)' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </div>
-                  </button>
-                )
-              })}
+            <div className={`${styles.glassCard} ${styles.cardInsights}`}>
+              <div className={styles.cardAnalysisTitle}>Review Insights</div>
+              <div className={styles.barRow}>
+                <div className={styles.barLabels}><span>Quality</span><span>92%</span></div>
+                <div className={styles.barTrack}><div className={styles.barFill} style={{ width: '92%' }}></div></div>
+              </div>
+              <div className={styles.barRow}>
+                <div className={styles.barLabels}><span>Delivery</span><span>78%</span></div>
+                <div className={styles.barTrack}><div className={styles.barFill} style={{ width: '78%' }}></div></div>
+              </div>
+              <div className={styles.barRow}>
+                <div className={styles.barLabels}><span>Support</span><span>64%</span></div>
+                <div className={styles.barTrack}><div className={styles.barFill} style={{ width: '64%' }}></div></div>
+              </div>
+              <div className={styles.barRow}>
+                <div className={styles.barLabels}><span>Pricing</span><span>42%</span></div>
+                <div className={styles.barTrack}><div className={styles.barFill} style={{ width: '42%', background: '#E07A5F' }}></div></div>
+              </div>
             </div>
-            
-            <div style={{ textAlign: 'center', marginTop: 24 }}>
-              <button className="btn btn-ghost" onClick={() => setStage('landing')} style={{ fontSize: '0.85rem' }}>
-                ← Back
-              </button>
+
+            <div className={`${styles.glassCard} ${styles.cardRoi}`}>
+              <div className={styles.cardAnalysisTitle}>ROI & Business Impact</div>
+              <div className={styles.roiMetric}>
+                <div className={styles.roiValue}>+32%</div>
+                <div className={styles.roiLabel}>CSAT</div>
+              </div>
+              <div className={styles.roiMetric}>
+                <div className={styles.roiValue}>+24%</div>
+                <div className={styles.roiLabel}>Revenue</div>
+              </div>
+              <div className={styles.roiSub}>10,500+ Reviews Analyzed</div>
             </div>
           </div>
-        )}
-
-        <p className="footer-note" style={{ marginTop: 40, textAlign: 'center' }}>
-          © 2026 ReviewAI Inc. · Privacy · Terms
-        </p>
+        </div>
       </div>
     </div>
   )

@@ -3,8 +3,8 @@ import {
   RadialBar,
   Cell,
   ResponsiveContainer
-} from "recharts";
-import { Star, Smile, Database, TrendingUp, CheckCircle2, Sparkles, Search } from 'lucide-react';
+import { Star, Smile, Database, TrendingUp, CheckCircle2, Sparkles, Search, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import styles from "./dashboard.module.css";
 import SankeyCard from "./SankeyCard";
 
@@ -210,32 +210,28 @@ export default function DashboardOverview({ parsedData, rawData }) {
             <Sparkles size={20} color="#fff" />
           </div>
           <div>
-            <h3 className={styles.aiSummaryTitle}>InsightEngine AI Summary</h3>
-            <p className={styles.aiSummarySub}>Automatic intelligence extraction from latest data batches</p>
+            <h3 className={styles.aiSummaryTitle}>Groq Executive Summary</h3>
+            <p className={styles.aiSummarySub}>LLM-generated intelligence extraction from latest data batches</p>
           </div>
         </div>
 
-        <div className={styles.aiInsightsGrid}>
-          <div className={styles.aiInsightCard}>
-            <div className={styles.insightIconWrapper} style={{ color: '#a07151' }}>
-              <TrendingUp size={20} />
-            </div>
-            <div className={styles.insightContent}>
-              <h4>Growth Opportunity identified</h4>
-              <p>Users are frequently mentioning the topic <strong>"{topTopic}"</strong> alongside keywords like <strong>"{topKeyword}"</strong>. Implementing targeted improvements here could raise user satisfaction significantly.</p>
+        {rawData?.llm_executive_summary ? (
+          <div className={styles.markdownContainer}>
+            <ReactMarkdown>{rawData.llm_executive_summary}</ReactMarkdown>
+          </div>
+        ) : (
+          <div className={styles.aiInsightsGrid}>
+            <div className={styles.aiInsightCard} style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+              <div className={styles.insightIconWrapper} style={{ color: '#6b7280', margin: '0 auto 16px auto' }}>
+                <FileText size={32} />
+              </div>
+              <div className={styles.insightContent}>
+                <h4 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No Executive Summary Found</h4>
+                <p style={{ color: 'var(--text2)' }}>Run <code>npm run batch:insights</code> to generate a deep-dive analysis using the Groq LLM.</p>
+              </div>
             </div>
           </div>
-
-          <div className={styles.aiInsightCard}>
-            <div className={styles.insightIconWrapper} style={{ color: '#1F4D3B' }}>
-              <CheckCircle2 size={20} />
-            </div>
-            <div className={styles.insightContent}>
-              <h4>Recent Feedback Focus</h4>
-              <p>The latest data shows a high volume of positive sentiment ({sentimentData?.pct || 0}%). Continue monitoring the <strong>"{topTopic}"</strong> feedback to maintain this trend.</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </>
   );

@@ -520,6 +520,58 @@
   color: #1F4D3B;
 }
 
+/* ── Markdown AI Summary ────────────────────────────────────── */
+.markdownContainer {
+  background: rgba(31, 77, 59, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  padding: 24px 32px;
+  color: #1c231f;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.markdownContainer h1, .markdownContainer h2, .markdownContainer h3, .markdownContainer h4 {
+  color: #1F4D3B;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.markdownContainer h1:first-child, .markdownContainer h2:first-child, .markdownContainer h3:first-child {
+  margin-top: 0;
+}
+
+.markdownContainer p {
+  margin-bottom: 1em;
+  color: #374151;
+}
+
+.markdownContainer ul, .markdownContainer ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+  color: #374151;
+}
+
+.markdownContainer li {
+  margin-bottom: 0.25em;
+}
+
+.markdownContainer strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.markdownContainer code {
+  background: rgba(31, 77, 59, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #1F4D3B;
+  font-family: monospace;
+}
+
 /* ── Misc ───────────────────────────────────────────────────── */
 .starRow {
   display: flex;

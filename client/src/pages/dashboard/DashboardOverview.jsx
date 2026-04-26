@@ -3,11 +3,12 @@ import {
   RadialBar,
   Cell,
   ResponsiveContainer
+} from 'recharts';
+
 import { Star, Smile, Database, TrendingUp, CheckCircle2, Sparkles, Search, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import styles from "./dashboard.module.css";
 import SankeyCard from "./SankeyCard";
-
 /* ─────────────────────────────────────────────────────────────
    SMALL REUSABLE PIECES
 ───────────────────────────────────────────────────────────── */

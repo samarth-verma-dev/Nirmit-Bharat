@@ -222,13 +222,23 @@ export default function DashboardOverview({ parsedData, rawData }) {
           </div>
         ) : (
           <div className={styles.aiInsightsGrid}>
-            <div className={styles.aiInsightCard} style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
-              <div className={styles.insightIconWrapper} style={{ color: '#6b7280', margin: '0 auto 16px auto' }}>
-                <FileText size={32} />
+            <div className={styles.aiInsightCard}>
+              <div className={styles.insightIconWrapper} style={{ color: '#a07151' }}>
+                <TrendingUp size={20} />
               </div>
               <div className={styles.insightContent}>
-                <h4 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No Executive Summary Found</h4>
-                <p style={{ color: 'var(--text2)' }}>Run <code>npm run batch:insights</code> to generate a deep-dive analysis using the Groq LLM.</p>
+                <h4>Growth Opportunity Identified</h4>
+                <p>Users are frequently mentioning the topic <strong>"{topTopic}"</strong> alongside keywords like <strong>"{topKeyword}"</strong>. Implementing targeted improvements here could raise user satisfaction significantly.</p>
+              </div>
+            </div>
+
+            <div className={styles.aiInsightCard}>
+              <div className={styles.insightIconWrapper} style={{ color: '#1F4D3B' }}>
+                <CheckCircle2 size={20} />
+              </div>
+              <div className={styles.insightContent}>
+                <h4>Recent Feedback Focus</h4>
+                <p>The latest data shows a high volume of positive sentiment ({sentimentData?.pct || 0}%). Continue monitoring the <strong>"{topTopic}"</strong> feedback to maintain this trend.</p>
               </div>
             </div>
           </div>

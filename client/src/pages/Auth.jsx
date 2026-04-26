@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Auth() {
   const navigate = useNavigate()
@@ -186,10 +187,22 @@ export default function Auth() {
     ? { background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid rgba(164,106,61,0.25)' }
     : { background: 'var(--primary-glow)', color: 'var(--primary)', border: '1px solid rgba(31,77,59,0.2)' }
 
+  // ── ANIMATION VARIANTS ────────────────────────────────────────────────────
+  const pageVariants = {
+    initial: { opacity: 0, scale: 0.96 },
+    animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+    exit: { opacity: 0, scale: 0.96, transition: { duration: 0.3, ease: 'easeIn' } }
+  }
+
   // ── JOIN SUCCESS OVERLAY ──────────────────────────────────────────────────
   if (joinSuccess) {
     return (
-      <div className="center-screen">
+      <motion.div 
+        className="center-screen"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.5 } }}
+        exit={{ opacity: 0 }}
+      >
         <div className="bg-grid" />
         <div className="success-ring">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -198,14 +211,21 @@ export default function Auth() {
         </div>
         <h1 className="complete-title">You've joined the workspace!</h1>
         <p className="complete-sub">Redirecting to your dashboard…</p>
-      </div>
+      </motion.div>
     )
   }
 
   // ── INVITE VALIDATION SCREEN ──────────────────────────────────────────────
   if (step === 'invite') {
     return (
-      <div className="screen active" style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <motion.div 
+        className="screen active" 
+        style={{ alignItems: 'center', justifyContent: 'center' }}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        variants={pageVariants}
+      >
         <div className="bg-grid" />
         <div className="login-wrap" style={{ maxWidth: 440 }}>
           <div className="logo-mark" style={{ marginBottom: 32, justifyContent: 'center' }}>
@@ -269,13 +289,20 @@ export default function Auth() {
           </div>
           <p className="footer-note">© 2026 ReviewAI Inc. · Privacy · Terms</p>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
   // ── MAIN AUTH SCREEN ─────────────────────────────────────────────────────
   return (
-    <div className="screen active" style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <motion.div 
+      className="screen active" 
+      style={{ alignItems: 'center', justifyContent: 'center' }}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      variants={pageVariants}
+    >
       <div className="bg-grid" />
       <div className="login-wrap" style={{ maxWidth: 440 }}>
 
@@ -367,6 +394,6 @@ export default function Auth() {
 
         <p className="footer-note" style={{ textAlign: 'center' }}>© 2026 ReviewAI Inc. · Privacy · Terms</p>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { Star, Smile, Database, TrendingUp, CheckCircle2, Sparkles, Search } from 'lucide-react';
 import styles from "./dashboard.module.css";
+import SankeyCard from "./SankeyCard";
 
 /* ─────────────────────────────────────────────────────────────
    SMALL REUSABLE PIECES
@@ -137,7 +138,7 @@ function DonutCard({ data }) {
 /* ─────────────────────────────────────────────────────────────
    DASHBOARD OVERVIEW COMPONENT
 ───────────────────────────────────────────────────────────── */
-export default function DashboardOverview({ parsedData }) {
+export default function DashboardOverview({ parsedData, rawData }) {
   if (!parsedData) return <div>Loading overview...</div>;
 
   const { ratingData, sentimentData, totalAnalyzed, topTopic, topKeyword } = parsedData;
@@ -199,6 +200,7 @@ export default function DashboardOverview({ parsedData }) {
       <div className={styles.chartsGrid}>
         <RatingBarsCard data={ratingData} />
         <DonutCard data={sentimentData} />
+        <SankeyCard rawData={rawData} />
       </div>
 
       {/* AI Summary Section */}

@@ -171,7 +171,7 @@ export default function Dashboard() {
             {activeView === 'Location Insights' && <LocationInsights data={globalRawData} />}
             {activeView === 'Sentiment Radar' && <SentimentRadar data={globalRawData} />}
             {activeView === 'Rating Trends' && <RatingTrends data={globalRawData} />}
-            {activeView === 'Dashboard' && <DashboardOverview parsedData={globalParsedData} />}
+            {activeView === 'Dashboard' && <DashboardOverview parsedData={globalParsedData} rawData={globalRawData} />}
           </>
         )}
       </main>

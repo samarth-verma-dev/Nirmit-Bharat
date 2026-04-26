@@ -6,7 +6,12 @@ import {
   PolarAngleAxis,
   ResponsiveContainer,
   Tooltip,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend
 } from "recharts";
 import { MoreVertical } from 'lucide-react';
 import styles from "./dashboard.module.css";
@@ -85,9 +90,12 @@ export default function SentimentRadar({ data }) {
     const maxScore = Math.max(...chartData.map(d => d.score), 1);
     chartData.forEach(d => { d.score = Math.round((d.score / maxScore) * 100); });
 
-    const sentimentSeries = data.trends ? getSentimentSeries(data.trends) : [];
+    return chartData;
+  }, [data]);
 
-    return { radarData: chartData, sentimentSeries };
+  const sentimentSeries = useMemo(() => {
+    if (!data?.trends) return [];
+    return getSentimentSeries(data.trends);
   }, [data]);
 
   if (!data) {
@@ -104,7 +112,7 @@ export default function SentimentRadar({ data }) {
         </h2>
       </div>
 
-      <div className={styles.card} style={{ height: '500px', padding: '32px', marginBottom: '24px' }}>
+      <div className={styles.card} style={{ height: '600px', padding: '32px' }}>
       <div className={styles.cardHeader}>
         <div>
           <p className={styles.cardTitle} style={{ fontSize: '20px' }}>Sentiment Breakdown</p>
@@ -113,9 +121,9 @@ export default function SentimentRadar({ data }) {
         <MoreVertical size={24} className={styles.cardActionIcon} />
       </div>
 
-      <div className={styles.chartContainer} style={{ height: 'calc(100% - 60px)' }}>
+      <div className={styles.chartContainer} style={{ height: '100%' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={radarData.radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+          <RadarChart data={radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
             <PolarGrid stroke="rgba(0,0,0,0.04)" strokeDasharray="3 3" />
             <PolarAngleAxis
               dataKey="attr"
@@ -140,49 +148,51 @@ export default function SentimentRadar({ data }) {
           </RadarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+      </div>
 
-    {/* Sentiment Over Time */}
-    <div className={styles.card} style={{ padding: '32px' }}>
-      <div className={styles.cardHeader} style={{ marginBottom: '24px' }}>
-        <div>
-          <p className={styles.cardTitle} style={{ fontSize: '20px' }}>Sentiment Over Time</p>
-          <p className={styles.cardSubTitle} style={{ fontSize: '14px' }}>Monthly positive / neutral / negative counts</p>
+      {/* ── ROW 2: Sentiment Over Time ── */}
+      <div style={{ marginBottom: 24 }}>
+        <div className={styles.card} style={{ padding: '24px' }}>
+          <div className={styles.cardHeader} style={{ marginBottom: '16px' }}>
+            <div>
+              <p className={styles.cardTitle}>Sentiment Over Time</p>
+              <p className={styles.cardSubTitle}>Monthly positive / neutral / negative counts</p>
+            </div>
+          </div>
+          <div style={{ height: '260px', width: '100%' }}>
+            {sentimentSeries.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sentimentSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gPos" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#1F4D3B" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#1F4D3B" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="gNeg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#dc2626" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="gNeu" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#6b7280" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#6b7280" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                  <XAxis dataKey="month" tick={{ fill: '#8a968f', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tick={{ fill: '#8a968f', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
+                  <Tooltip {...tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 12, fontWeight: 600, paddingTop: 12 }} />
+                  <Area type="monotone" dataKey="POSITIVE" stroke="#1F4D3B" strokeWidth={2} fill="url(#gPos)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="monotone" dataKey="NEUTRAL"  stroke="#6b7280" strokeWidth={2} fill="url(#gNeu)" dot={false} activeDot={{ r: 5 }} />
+                  <Area type="monotone" dataKey="NEGATIVE" stroke="#dc2626" strokeWidth={2} fill="url(#gNeg)" dot={false} activeDot={{ r: 5 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>No sentiment data</div>
+            )}
+          </div>
         </div>
       </div>
-      <div style={{ height: '300px', width: '100%' }}>
-        {radarData.sentimentSeries.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={radarData.sentimentSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gPos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#1F4D3B" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#1F4D3B" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="gNeg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#dc2626" stopOpacity={0.25}/>
-                  <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="gNeu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#6b7280" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#6b7280" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-              <XAxis dataKey="month" tick={{ fill: '#8a968f', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-              <YAxis tick={{ fill: '#8a968f', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip {...tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 12, fontWeight: 600, paddingTop: 12 }} />
-              <Area type="monotone" dataKey="POSITIVE" stroke="#1F4D3B" strokeWidth={2} fill="url(#gPos)" dot={false} activeDot={{ r: 5 }} />
-              <Area type="monotone" dataKey="NEUTRAL"  stroke="#6b7280" strokeWidth={2} fill="url(#gNeu)" dot={false} activeDot={{ r: 5 }} />
-              <Area type="monotone" dataKey="NEGATIVE" stroke="#dc2626" strokeWidth={2} fill="url(#gNeg)" dot={false} activeDot={{ r: 5 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>No sentiment data available</div>
-        )}
-      </div>
-    </div>
     </div>
   );
 }

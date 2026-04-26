@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, MapPin, FileText, AlertCircle
+  Search, LayoutDashboard, Radar as IconRadar, TrendingUp, MapPin, FileText
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
 import styles from "./dashboard.module.css";
 import DashboardOverview from "./DashboardOverview";
 import LocationInsights from "./LocationInsights";
@@ -13,6 +9,64 @@ import SentimentRadar from "./SentimentRadar";
 import RatingTrends from "./RatingTrends";
 import SignOutButton from "../../components/SignOutButton";
 import { supabase } from "../../services/supabase";
+
+const FormattedSummary = ({ text }) => {
+  if (!text) return null;
+  return (
+    <div style={{
+      fontSize: 15,
+      color: '#1c231f',
+      lineHeight: 1.9,
+      fontFamily: 'Inter, sans-serif',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px'
+    }}>
+      {text.split('\n').map((line, idx) => {
+        if (!line.trim()) return null;
+        
+        let formattedLine = line;
+        let isHeader = false;
+        let isListItem = false;
+        
+        // Basic parsing
+        if (line.startsWith('### ')) {
+          isHeader = true;
+          formattedLine = line.substring(4);
+        } else if (line.startsWith('## ')) {
+          isHeader = true;
+          formattedLine = line.substring(3);
+        } else if (line.startsWith('# ')) {
+          isHeader = true;
+          formattedLine = line.substring(2);
+        } else if (line.startsWith('- ') || line.startsWith('* ')) {
+          isListItem = true;
+          formattedLine = line.substring(2);
+        }
+        
+        // Handle bolding **text**
+        const renderText = (str) => {
+          const parts = str.split(/(\*\*.*?\*\*)/g);
+          return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          });
+        };
+
+        if (isHeader) {
+          return <div key={idx} style={{ fontSize: '1.2em', fontWeight: 700, color: '#1F4D3B', marginTop: '12px', marginBottom: '4px' }}>{renderText(formattedLine)}</div>;
+        }
+        if (isListItem) {
+          return <div key={idx} style={{ display: 'flex', gap: '12px', paddingLeft: '8px' }}><span style={{ color: '#a07151' }}>•</span> <span>{renderText(formattedLine)}</span></div>;
+        }
+        
+        return <div key={idx}>{renderText(formattedLine)}</div>;
+      })}
+    </div>
+  );
+};
 
 /* ─────────────────────────────────────────────────────────────
    JSON DATA INTEGRATION
@@ -137,10 +191,6 @@ function Sidebar({ activeView, setActiveView }) {
           <FileText size={20} />
           <span>AI Summary</span>
         </a>
-        <a href="#" className={`${styles.navItem} ${activeView === 'Urgency Analysis' ? styles.active : ''}`} onClick={(e) => { e.preventDefault(); setActiveView('Urgency Analysis'); }}>
-          <AlertCircle size={20} />
-          <span>Priority Dispatch</span>
-        </a>
       </nav>
 
       <div className={styles.sidebarBottom}>
@@ -153,144 +203,6 @@ function Sidebar({ activeView, setActiveView }) {
 /* ─────────────────────────────────────────────────────────────
    AI SUMMARY VIEW
 ───────────────────────────────────────────────────────────── */
-/* ─────────────────────────────────────────────────────────────
-   URGENCY ANALYSIS VIEW (Priority Dispatch)
-───────────────────────────────────────────────────────────── */
-function UrgencyAnalysisView({ rawData }) {
-  const trends = rawData?.trends || {};
-  const sortedMonths = Object.keys(trends).sort();
-  
-  const urgencyData = sortedMonths.map(month => ({
-    month,
-    urgency: Math.round((trends[month].averageUrgency || 0) * 10) / 10,
-    total: trends[month].totalAnalyzed || 0
-  }));
-
-  const avgUrgency = urgencyData.length > 0 
-    ? (urgencyData.reduce((acc, curr) => acc + curr.urgency, 0) / urgencyData.length).toFixed(1)
-    : 0;
-
-  return (
-    <div>
-      <div className={styles.topNav} style={{ marginBottom: 32 }}>
-        <h2 className={styles.navTitle}>Priority Dispatch Analysis</h2>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 24 }}>
-        <div className={styles.summaryCard}>
-          <div>
-            <p className={styles.summaryTitle}>AVG URGENCY SCORE</p>
-            <p className={styles.summaryValue}>{avgUrgency}/10</p>
-          </div>
-          <div className={styles.summaryIconWrapper} style={{ background: 'rgba(224,122,95,0.1)', color: '#E07A5F' }}>🔥</div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div>
-            <p className={styles.summaryTitle}>HIGH PRIORITY LOAD</p>
-            <p className={styles.summaryValue}>
-              {urgencyData[urgencyData.length-1]?.total || 0}
-            </p>
-          </div>
-          <div className={styles.summaryIconWrapper} style={{ background: 'rgba(31,77,59,0.06)', color: '#1F4D3B' }}>⚡</div>
-        </div>
-        <div className={styles.summaryCard}>
-          <div>
-            <p className={styles.summaryTitle}>RESPONSE TARGET</p>
-            <p className={styles.summaryValue}>&lt; 2h</p>
-          </div>
-          <div className={styles.summaryIconWrapper} style={{ background: 'rgba(160,113,81,0.08)', color: '#a07151' }}>⏱️</div>
-        </div>
-      </div>
-
-      <div className={styles.card} style={{ padding: 32, marginBottom: 24 }}>
-        <div className={styles.cardHeader} style={{ marginBottom: 24 }}>
-          <div>
-            <p className={styles.cardTitle}>Urgency Trends</p>
-            <p className={styles.cardSubTitle}>Monthly average urgency score (1-10 scale)</p>
-          </div>
-        </div>
-        <div style={{ height: 300, width: '100%' }}>
-           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={urgencyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorUrgency" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#E07A5F" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#E07A5F" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-              <XAxis dataKey="month" tick={{ fill: "#8a968f", fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-              <YAxis domain={[0, 10]} tick={{ fill: "#8a968f", fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip 
-                contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
-              />
-              <Area type="monotone" dataKey="urgency" name="Urgency Score" stroke="#E07A5F" strokeWidth={3} fill="url(#colorUrgency)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className={styles.card} style={{ padding: 32, marginBottom: 24 }}>
-        <div className={styles.cardHeader} style={{ marginBottom: 24 }}>
-          <div>
-            <p className={styles.cardTitle}>Identified Problems & Risks</p>
-            <p className={styles.cardSubTitle}>Topics identified as potential blockers or high-priority issues</p>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {rawData?.overall?.topTopics?.slice(0, 6).map((t, idx) => (
-            <div key={idx} style={{ 
-              padding: 20, 
-              background: 'rgba(31,77,59,0.03)', 
-              borderRadius: 16, 
-              border: '1px solid rgba(31,77,59,0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16
-            }}>
-              <div style={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: 12, 
-                background: '#E07A5F', 
-                color: '#fff', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: 14
-              }}>
-                !
-              </div>
-              <div>
-                <p style={{ fontWeight: 700, color: '#1c231f', textTransform: 'capitalize', marginBottom: 2 }}>{t.topic.replace(/_/g, ' ')}</p>
-                <p style={{ fontSize: 12, color: '#8a968f' }}>{t.count} mentions identified in latest batch</p>
-              </div>
-            </div>
-          ))}
-          {(!rawData?.overall?.topTopics || rawData.overall.topTopics.length === 0) && (
-            <p style={{ color: '#8a968f', fontSize: 14 }}>No specific problems identified in the current data batch.</p>
-          )}
-        </div>
-      </div>
-
-      <div className={styles.card} style={{ padding: 32 }}>
-        <div className={styles.cardHeader} style={{ marginBottom: 20 }}>
-          <p className={styles.cardTitle}>Response Prioritization Strategy</p>
-        </div>
-        <div style={{ color: '#1c231f', fontSize: 14, lineHeight: 1.6 }}>
-          <p style={{ marginBottom: 12 }}>Based on the current <strong>{avgUrgency}/10</strong> urgency level, we recommend the following prioritization:</p>
-          <ul style={{ paddingLeft: 20 }}>
-            <li style={{ marginBottom: 8 }}><strong>Critical (Score 8-10):</strong> Immediate escalation to support leads. Target response: 30 mins.</li>
-            <li style={{ marginBottom: 8 }}><strong>High (Score 6-8):</strong> Direct assignment to specialized teams. Target response: 2 hours.</li>
-            <li><strong>Medium/Low (Score &lt; 6):</strong> Batch processing by standard support queues. Target response: 24 hours.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AISummaryView({ rawData }) {
   const summary = rawData?.llm_executive_summary;
   const overall = rawData?.overall;
@@ -351,13 +263,8 @@ function AISummaryView({ rawData }) {
               ✦ AI Generated
             </div>
           </div>
-          <div style={{
-            fontSize: 15,
-            color: '#1c231f',
-            lineHeight: 1.9,
-            fontFamily: 'Inter, sans-serif',
-          }}>
-            <ReactMarkdown className="markdown-report">{summary}</ReactMarkdown>
+          <div>
+            <FormattedSummary text={summary} />
           </div>
         </div>
       ) : (
@@ -413,7 +320,6 @@ export default function Dashboard() {
             {activeView === 'Rating Trends' && <RatingTrends data={globalRawData} />}
             {activeView === 'Dashboard' && <DashboardOverview parsedData={globalParsedData} rawData={globalRawData} />}
             {activeView === 'AI Summary' && <AISummaryView rawData={globalRawData} />}
-            {activeView === 'Urgency Analysis' && <UrgencyAnalysisView rawData={globalRawData} />}
           </>
         )}
       </main>

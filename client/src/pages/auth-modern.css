@@ -1,0 +1,273 @@
+/* modern-auth.css */
+
+.modern-auth-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #F0EAE5; /* Warm earthy off-white */
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LEFT SIDE: FORM / CARD AREA
+───────────────────────────────────────────────────────────── */
+.modern-auth-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 10;
+  position: relative;
+}
+
+@media (min-width: 992px) {
+  .modern-auth-left {
+    flex: 0 0 50%;
+    max-width: 600px;
+  }
+}
+
+.modern-auth-card {
+  background: #FFFFFF;
+  border-radius: 24px; /* Heavily rounded corners */
+  padding: 48px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  /* Entrance animation is handled by framer-motion in JSX */
+}
+
+/* Typography Overrides */
+.modern-auth-card h1, .modern-auth-card h2 {
+  color: #1A1A1A;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.modern-auth-card p {
+  color: #666666;
+  font-size: 0.95rem;
+}
+
+/* Inputs */
+.modern-auth-card .field-group label {
+  color: #4A4A4A;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.modern-auth-card input, 
+.modern-auth-card select {
+  background: #F5F5F5;
+  border: 1px solid transparent; /* No harsh outlines */
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  color: #1A1A1A;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+  outline: none;
+}
+
+.modern-auth-card input::placeholder {
+  color: #A3A3A3;
+}
+
+.modern-auth-card input:focus, 
+.modern-auth-card select:focus {
+  background: #EBEBEB; /* Slightly darker gray */
+  box-shadow: 0 0 0 4px rgba(138, 60, 56, 0.1); /* Soft faint border glow */
+}
+
+/* Button */
+.modern-auth-card .btn-primary, 
+.modern-auth-card .roleCard {
+  background: #8A3C38; /* Solid earthy reddish-brown */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px; /* Pill-shaped */
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 14px 24px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.modern-auth-card .btn-primary:hover,
+.modern-auth-card .roleCard:hover {
+  background: #73312E; /* Subtly darker on hover */
+  transform: scale(0.98);
+}
+
+.modern-auth-card .btn-primary:active,
+.modern-auth-card .roleCard:active {
+  transform: scale(0.96);
+}
+
+/* Role Selection specific overrides */
+.modern-auth-card .roleCard {
+  background: #FFFFFF;
+  color: #1A1A1A;
+  border: 2px solid #F0F0F0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.modern-auth-card .roleCard:hover {
+  background: #FAFAFA;
+  border-color: #8A3C38;
+  transform: translateY(-2px); /* Lift instead of scale down for cards */
+}
+
+.modern-auth-card .roleCard.active {
+  border-color: #8A3C38;
+  background: rgba(138, 60, 56, 0.04);
+}
+
+.modern-auth-card .roleIconWrapper {
+  color: #8A3C38;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RIGHT SIDE: DECORATIVE BACKGROUND
+───────────────────────────────────────────────────────────── */
+.modern-auth-right {
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .modern-auth-right {
+    display: block;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #EBE5DF; /* Slightly darker beige to contrast left side */
+  }
+}
+
+/* Faint grid overlay */
+.modern-auth-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 1;
+}
+
+/* Noise/Grain Filter Layer */
+.modern-auth-noise {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.12; /* Heavy noise but blended */
+  mix-blend-mode: multiply;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Shapes Container */
+.modern-shapes-container {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* Apply a slight blur and contrast to make shapes feel textured and rich */
+  filter: contrast(110%) saturate(120%);
+}
+
+.shape {
+  position: absolute;
+  opacity: 0.9;
+}
+
+/* Animations */
+@keyframes float1 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes float2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(24px); }
+}
+
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotateFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(180deg); }
+}
+
+/* Circle: Bright Red */
+.shape-circle {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: #E63946;
+  top: 15%;
+  left: 20%;
+  animation: float1 6s ease-in-out infinite;
+}
+
+/* Polygon (Hexagon/Triangle): Deep Crimson/Burgundy */
+.shape-polygon {
+  width: 200px;
+  height: 200px;
+  background: #6A1A21;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  bottom: 20%;
+  right: 15%;
+  animation: float2 7s ease-in-out infinite, rotateSlow 25s linear infinite;
+}
+
+/* Half Circle: Grey */
+.shape-half-circle {
+  width: 180px;
+  height: 90px;
+  background: #8D99AE;
+  border-radius: 90px 90px 0 0;
+  top: 40%;
+  right: 25%;
+  animation: float1 5s ease-in-out infinite reverse;
+}
+
+/* Starburst: Bright Red / Burgundy mix */
+.shape-starburst {
+  width: 160px;
+  height: 160px;
+  background: #9D2832;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  top: 60%;
+  left: 25%;
+  animation: float2 8s ease-in-out infinite, rotateSlow 20s linear infinite reverse;
+}
+
+/* Stepped Stair: Grey */
+.shape-stepped {
+  width: 150px;
+  height: 150px;
+  background: #4A4E69;
+  clip-path: polygon(0 0, 33% 0, 33% 33%, 66% 33%, 66% 66%, 100% 66%, 100% 100%, 0 100%);
+  bottom: 10%;
+  left: 40%;
+  animation: float1 6.5s ease-in-out infinite;
+}

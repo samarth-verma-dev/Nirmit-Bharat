@@ -365,11 +365,9 @@ export default function Admin() {
           const preselected = data.find(c => c.id === stored) || data[0]
           setSelectedCompany(preselected)
           
-          // Only show dashboard if user is not in the middle of onboarding
-          const activeOnboarding = localStorage.getItem('adminOnboardingData')
-          if (!activeOnboarding) {
-            setShowDashboard(true)
-          }
+          // Always go straight to dashboard if they already have a company
+          // (They can still manually add a new one via the '+ Add Company' button)
+          setShowDashboard(true)
         }
       } catch (err) {
         console.error('Unexpected error fetching companies:', err)

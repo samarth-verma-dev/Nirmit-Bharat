@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
-
+import './auth-modern.css'
 export default function Auth() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -88,10 +88,10 @@ export default function Auth() {
 
         setJoinSuccess(true)
         setTimeout(() => navigate('/dashboard', { replace: true }), 1800)
-      } else {
-        // Admin → go to admin dashboard
-        navigate('/admin', { replace: true })
       }
+      // If not handling an invite link, do nothing here.
+      // The useEffect listening to 'role' will automatically route the user
+      // to the correct dashboard once AuthContext resolves their role from the DB.
     } catch (e) {
       console.error('Post auth error:', e)
       setError('An error occurred while completing authentication.')
@@ -218,28 +218,15 @@ export default function Auth() {
   // ── INVITE VALIDATION SCREEN ──────────────────────────────────────────────
   if (step === 'invite') {
     return (
-      <motion.div 
-        className="screen active" 
-        style={{ alignItems: 'center', justifyContent: 'center' }}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={pageVariants}
-      >
-        <div className="bg-grid" />
-        <div className="login-wrap" style={{ maxWidth: 440 }}>
-          <div className="logo-mark" style={{ marginBottom: 32, justifyContent: 'center' }}>
-            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="var(--primary)" />
-              <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>ReviewAI</span>
-          </div>
-
-          <div className="card login-card" style={{ padding: '36px 32px' }}>
+      <div className="modern-auth-container">
+        <div className="modern-auth-left">
+          <motion.div 
+            className="modern-auth-card"
+            initial="initial" animate="animate" exit="exit" variants={pageVariants}
+          >
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, color: 'var(--text)', letterSpacing: '-0.02em' }}>Join Workspace</h1>
-              <p style={{ color: 'var(--text2)', fontSize: '0.95rem' }}>Enter your details to access company insights.</p>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: 8, color: '#1A1A1A', letterSpacing: '-0.02em' }}>Join Workspace</h1>
+              <p style={{ color: '#666', fontSize: '0.95rem' }}>Enter your details to access company insights.</p>
             </div>
 
             <div className="field-group">
@@ -284,74 +271,64 @@ export default function Auth() {
             </button>
             
             <p className="hint-link" style={{ marginTop: 16 }}>
-              <a href="#" onClick={e => { e.preventDefault(); navigate('/') }}>← Back to role selection</a>
+              <a href="#" onClick={e => { e.preventDefault(); navigate('/') }} style={{ color: '#8A3C38' }}>← Back to role selection</a>
             </p>
-          </div>
-          <p className="footer-note">© 2026 ReviewAI Inc. · Privacy · Terms</p>
+          </motion.div>
         </div>
-      </motion.div>
+        <div className="modern-auth-right">
+          <div className="modern-auth-grid-overlay"></div>
+          <div className="modern-auth-noise"></div>
+          <div className="modern-shapes-container">
+            <div className="shape shape-polygon"></div>
+            <div className="shape shape-starburst"></div>
+            <div className="shape shape-circle"></div>
+            <div className="shape shape-half-circle"></div>
+            <div className="shape shape-stepped"></div>
+          </div>
+        </div>
+      </div>
     )
   }
 
   // ── MAIN AUTH SCREEN ─────────────────────────────────────────────────────
   return (
-    <motion.div 
-      className="screen active" 
-      style={{ alignItems: 'center', justifyContent: 'center' }}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={pageVariants}
-    >
-      <div className="bg-grid" />
-      <div className="login-wrap" style={{ maxWidth: 440 }}>
-
-        <div className="logo-mark" style={{ marginBottom: 32, justifyContent: 'center' }}>
-          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="8" fill="var(--primary)" />
-            <path d="M10 23l5-8 4 6 3-4 4 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>ReviewAI</span>
-        </div>
-
-        <div className="card login-card" style={{ padding: '36px 32px' }}>
+    <div className="modern-auth-container">
+      <div className="modern-auth-left">
+        <motion.div 
+          className="modern-auth-card"
+          initial="initial" animate="animate" exit="exit" variants={pageVariants}
+        >
           {/* Role badge */}
           <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: 20, ...roleBadgeStyle }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: 20, background: 'rgba(138, 60, 56, 0.08)', color: '#8A3C38' }}>
               {roleLabel} Portal
             </span>
             <button
               onClick={() => navigate('/')}
-              style={{ fontSize: '0.78rem', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'var(--text)'}
-              onMouseLeave={e => e.target.style.color = 'var(--text2)'}
+              style={{ fontSize: '0.78rem', color: '#666', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = '#1A1A1A'}
+              onMouseLeave={e => e.target.style.color = '#666'}
             >
               — Change role
             </button>
           </div>
 
           <div style={{ marginBottom: 24 }}>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-              {isLogin ? 'Welcome back' : 'Create account'}
-            </h1>
-            <p style={{ color: 'var(--text2)', fontSize: '0.95rem' }}>
-              {isLogin ? `Sign in to your ${roleLabel} portal` : 'Get started with ReviewAI today'}
-            </p>
+            <h1>{isLogin ? 'Welcome back' : 'Create account'}</h1>
+            <p>{isLogin ? `Sign in to your ${roleLabel} portal` : 'Get started with Analaysta today'}</p>
           </div>
 
           {/* Tabs */}
-          <div className="auth-tabs" style={{ display: 'flex', background: 'var(--surface2)', padding: 4, borderRadius: 'var(--radius-sm)', marginBottom: 24, border: 'none' }}>
+          <div style={{ display: 'flex', gap: 4, background: '#F5F5F5', padding: 4, borderRadius: 12, marginBottom: 24 }}>
             <button 
-              className={`auth-tab ${isLogin ? 'active' : ''}`} 
               onClick={() => switchMode('login')}
-              style={{ flex: 1, padding: '8px 0', border: 'none', background: isLogin ? 'var(--surface)' : 'transparent', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: isLogin ? 'var(--text)' : 'var(--text2)', boxShadow: isLogin ? 'var(--shadow-sm)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ flex: 1, padding: '10px 0', border: 'none', background: isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: isLogin ? '#1A1A1A' : '#666', boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
             >
               Login
             </button>
             <button 
-              className={`auth-tab ${!isLogin ? 'active' : ''}`} 
               onClick={() => switchMode('signup')}
-              style={{ flex: 1, padding: '8px 0', border: 'none', background: !isLogin ? 'var(--surface)' : 'transparent', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: !isLogin ? 'var(--text)' : 'var(--text2)', boxShadow: !isLogin ? 'var(--shadow-sm)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ flex: 1, padding: '10px 0', border: 'none', background: !isLogin ? '#FFFFFF' : 'transparent', borderRadius: 8, fontWeight: 600, color: !isLogin ? '#1A1A1A' : '#666', boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
             >
               Sign Up
             </button>
@@ -385,15 +362,25 @@ export default function Auth() {
           </button>
 
           {isEmployee && !isLogin && !validatedCompanyId && (
-            <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: 12, textAlign: 'center' }}>
+            <p style={{ fontSize: '0.8rem', color: '#8A3C38', marginTop: 12, textAlign: 'center', fontWeight: 600 }}>
               Note: You need a valid invite to join a workspace.
             </p>
           )}
 
-        </div>
-
-        <p className="footer-note" style={{ textAlign: 'center' }}>© 2026 ReviewAI Inc. · Privacy · Terms</p>
+        </motion.div>
       </div>
-    </motion.div>
+
+      <div className="modern-auth-right">
+        <div className="modern-auth-grid-overlay"></div>
+        <div className="modern-auth-noise"></div>
+        <div className="modern-shapes-container">
+          <div className="shape shape-polygon"></div>
+          <div className="shape shape-starburst"></div>
+          <div className="shape shape-circle"></div>
+          <div className="shape shape-half-circle"></div>
+          <div className="shape shape-stepped"></div>
+        </div>
+      </div>
+    </div>
   )
 }

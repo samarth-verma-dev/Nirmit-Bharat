@@ -1,12 +1,26 @@
 import { useMemo } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
+  BarChart, Bar, Legend, LineChart, Line
 } from 'recharts';
 import styles from './dashboard.module.css';
 
 /* ─── HELPER FUNCTIONS ──────────────────────────────────────── */
 const getSortedMonths = (trends) => Object.keys(trends).sort();
+
+const getSentimentSeries = (trends) =>
+  getSortedMonths(trends).map(month => ({
+    month,
+    POSITIVE: trends[month].sentiment?.POSITIVE || 0,
+    NEGATIVE: trends[month].sentiment?.NEGATIVE || 0,
+    NEUTRAL:  trends[month].sentiment?.NEUTRAL  || 0,
+  }));
+
+const getEmotionMatrix = (trends) =>
+  getSortedMonths(trends).map(month => ({
+    month,
+    ...(trends[month].emotions || {}),
+  }));
 
 const getAggregatedTopics = (trends) => {
   const agg = {};
@@ -34,10 +48,83 @@ const getAggregatedKeywords = (trends) => {
     .map(([name, count]) => ({ name, count }));
 };
 
+const EMOTIONS = ['joy', 'anger', 'sadness', 'fear', 'disgust', 'surprise', 'neutral'];
+
+/* ─── SHARED TOOLTIP STYLE ──────────────────────────────────── */
 const tooltipStyle = {
   contentStyle: { borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px 16px' },
   labelStyle:   { fontWeight: 700, color: '#1c231f', marginBottom: 4, fontSize: 12 },
 };
+
+/* ─── EMOTION HEATMAP CELL ──────────────────────────────────── */
+function EmotionHeatmap({ matrix }) {
+  if (!matrix || matrix.length === 0) return null;
+
+  const allVals = matrix.flatMap(row => EMOTIONS.map(e => row[e] || 0));
+  const maxVal  = Math.max(...allVals, 1);
+
+  const emotionColors = {
+    joy:      '#1F4D3B',
+    anger:    '#dc2626',
+    sadness:  '#6b7280',
+    fear:     '#a07151',
+    disgust:  '#7c3aed',
+    surprise: '#0ea5e9',
+    neutral:  '#8a968f',
+  };
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ borderCollapse: 'separate', borderSpacing: 4, width: '100%', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', color: '#8a968f', fontWeight: 600, paddingBottom: 8, whiteSpace: 'nowrap' }}>Emotion</th>
+            {matrix.map(({ month }) => (
+              <th key={month} style={{ color: '#8a968f', fontWeight: 500, paddingBottom: 8, textAlign: 'center', fontSize: 11 }}>
+                {month.slice(5)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {EMOTIONS.map(emotion => (
+            <tr key={emotion}>
+              <td style={{ color: '#1c231f', fontWeight: 600, paddingRight: 12, whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                {emotion}
+              </td>
+              {matrix.map(({ month, ...vals }) => {
+                const val      = vals[emotion] || 0;
+                const opacity  = val / maxVal;
+                const color    = emotionColors[emotion] || '#1F4D3B';
+                return (
+                  <td key={month} title={`${emotion} in ${month}: ${val}`} style={{ textAlign: 'center' }}>
+                    <div style={{
+                      width: '100%',
+                      minWidth: 32,
+                      height: 28,
+                      borderRadius: 8,
+                      background: `${color}`,
+                      opacity: Math.max(0.08, opacity),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: opacity > 0.4 ? '#fff' : '#1c231f',
+                      fontWeight: 600,
+                      fontSize: 11,
+                      transition: 'opacity 0.2s',
+                    }}>
+                      {val > 0 ? val : ''}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /* ─── HORIZONTAL BAR ────────────────────────────────────────── */
 function HorizontalBarChart({ data, dataKey, color, nameKey = 'name' }) {

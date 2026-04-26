@@ -94,7 +94,7 @@ function DonutCard({ data }) {
               endAngle={-270}
               barSize={14}
             >
-              <RadialBar dataKey="value" cornerRadius={8} background={false}>
+              <RadialBar dataKey="value" cornerRadius={99} background={false}>
                 {radialData.map((entry, index) => (
                   <Cell key={index} fill={entry.fill} />
                 ))}

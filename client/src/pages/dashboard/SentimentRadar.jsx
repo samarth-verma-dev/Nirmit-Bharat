@@ -5,6 +5,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
   ResponsiveContainer,
+  Tooltip
 } from "recharts";
 import { MoreVertical } from 'lucide-react';
 import styles from "./dashboard.module.css";
@@ -96,19 +97,26 @@ export default function SentimentRadar({ data }) {
       <div className={styles.chartContainer} style={{ height: '100%' }}>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-            <PolarGrid stroke="#e8eaf2" strokeDasharray="3 3" gridType="polygon" />
+            <PolarGrid stroke="rgba(0,0,0,0.04)" strokeDasharray="3 3" />
             <PolarAngleAxis
               dataKey="attr"
-              tick={{ fill: "#6b7280", fontSize: 12, fontFamily: "Inter, sans-serif", fontWeight: 600, letterSpacing: 1 }}
+              tick={{ fill: "#8a968f", fontSize: 12, fontFamily: "Inter, sans-serif", fontWeight: 600, letterSpacing: 1 }}
               tickLine={false}
             />
+            <Tooltip 
+              contentStyle={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)', padding: '12px 16px' }}
+              labelStyle={{ fontWeight: 700, color: '#1c231f', marginBottom: 4, textTransform: 'uppercase', fontSize: 12 }}
+              itemStyle={{ fontWeight: 600, color: '#1F4D3B' }}
+            />
             <Radar
+              name="Sentiment"
               dataKey="score"
               stroke="#1F4D3B"
               strokeWidth={3}
-              fill="rgba(31, 77, 59, 0.15)"
-              fillOpacity={0.8}
+              fill="#1F4D3B"
+              fillOpacity={0.15}
               dot={{ fill: "#1F4D3B", r: 5, strokeWidth: 0 }}
+              activeDot={{ r: 7, fill: '#1F4D3B', stroke: '#fff', strokeWidth: 2 }}
             />
           </RadarChart>
         </ResponsiveContainer>

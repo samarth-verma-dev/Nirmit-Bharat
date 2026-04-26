@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar
 } from 'recharts';
 import styles from './dashboard.module.css';
 
@@ -76,16 +76,23 @@ export default function RatingTrends({ data }) {
         <div style={{ height: '240px', width: '100%' }}>
           {chartData.lineData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData.lineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8eaf2" />
-                <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-                <YAxis domain={[0, 5]} tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
+              <AreaChart data={chartData.lineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRating" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1F4D3B" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#1F4D3B" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                <XAxis dataKey="month" tick={{ fill: "#8a968f", fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                <YAxis domain={[0, 5]} tick={{ fill: "#8a968f", fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
                 <Tooltip 
-                  contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  labelStyle={{ fontWeight: 600, color: '#1c231f', marginBottom: 4 }}
+                  contentStyle={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)', padding: '12px 16px' }}
+                  labelStyle={{ fontWeight: 700, color: '#1c231f', marginBottom: 4, textTransform: 'uppercase', fontSize: 12 }}
+                  itemStyle={{ fontWeight: 600, color: '#1F4D3B' }}
                 />
-                <Line type="monotone" dataKey="rating" name="Est. Rating" stroke="#1F4D3B" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="rating" name="Est. Rating" stroke="#1F4D3B" strokeWidth={3} fillOpacity={1} fill="url(#colorRating)" dot={false} activeDot={{ r: 6, fill: '#1F4D3B', stroke: '#fff', strokeWidth: 2 }} />
+              </AreaChart>
             </ResponsiveContainer>
           ) : (
              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>No trend data available</div>
@@ -104,14 +111,16 @@ export default function RatingTrends({ data }) {
         <div style={{ height: '240px', width: '100%' }}>
            <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8eaf2" />
-              <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-              <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+              <XAxis dataKey="name" tick={{ fill: "#8a968f", fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+              <YAxis tick={{ fill: "#8a968f", fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
               <Tooltip 
-                cursor={{ fill: 'rgba(31, 77, 59, 0.04)' }}
-                contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                cursor={{ fill: 'rgba(31, 77, 59, 0.04)', radius: 8 }}
+                contentStyle={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)', padding: '12px 16px' }}
+                labelStyle={{ fontWeight: 700, color: '#1c231f', marginBottom: 4, fontSize: 12 }}
+                itemStyle={{ fontWeight: 600, color: '#a07151' }}
               />
-              <Bar dataKey="mentions" name="Mentions" fill="#a07151" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="mentions" name="Mentions" fill="#a07151" radius={[8, 8, 8, 8]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

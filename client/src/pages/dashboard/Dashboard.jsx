@@ -7,6 +7,7 @@ import DashboardOverview from "./DashboardOverview";
 import LocationInsights from "./LocationInsights";
 import SentimentRadar from "./SentimentRadar";
 import RatingTrends from "./RatingTrends";
+import SignOutButton from "../../components/SignOutButton";
 import { supabase } from "../../services/supabase";
 
 /* ─────────────────────────────────────────────────────────────
@@ -129,6 +130,10 @@ function Sidebar({ activeView, setActiveView }) {
           <span>Rating Trends</span>
         </a>
       </nav>
+
+      <div className={styles.sidebarBottom}>
+        <SignOutButton />
+      </div>
     </aside>
   );
 }

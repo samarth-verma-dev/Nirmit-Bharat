@@ -172,7 +172,7 @@ export default function DashboardOverview({ parsedData, rawData }) {
           <div>
             <p className={styles.summaryTitle}>SENTIMENT SCORE</p>
             <div className={styles.summaryValueRow}>
-              <span className={styles.summaryValue}>{sentimentData?.pct || 0}%</span>
+              <span className={styles.summaryValue}>{sentimentData?.posPct || 0}%</span>
               <span className={styles.summaryTrend}>~+5.2%</span>
             </div>
           </div>

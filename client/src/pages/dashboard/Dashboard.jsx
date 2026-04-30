@@ -11,6 +11,7 @@ import SupportInbox from "./SupportInbox";
 import SignOutButton from "../../components/SignOutButton";
 import { supabase } from "../../services/supabase";
 import Logo from "../../components/Logo";
+import { useAuth } from "../../context/AuthContext";
 
 const FormattedSummary = ({ text }) => {
   if (!text) return null;
@@ -73,29 +74,37 @@ const FormattedSummary = ({ text }) => {
 /* ─────────────────────────────────────────────────────────────
    JSON DATA INTEGRATION
 ───────────────────────────────────────────────────────────── */
-const fetchAnalyticsData = async () => {
+const fetchAnalyticsData = async (companyId) => {
+  if (!companyId) {
+    return { rawData: null, parsedData: null, isEmpty: true };
+  }
+
   try {
     const { data: records, error } = await supabase
       .from('analytics_summaries')
       .select('data')
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) throw error;
     
-    let analyticsData = {};
-    if (records && records.length > 0) {
-      analyticsData = records[0].data;
+    if (!records || records.length === 0 || !records[0]?.data) {
+      return { rawData: null, parsedData: null, isEmpty: true };
     }
 
-    // Fallback/Mock structure if the Supabase data doesn't perfectly match the old overall structure
+    const analyticsData = records[0].data;
     const overall = analyticsData.overall || {
-      topTopics: [{ topic: 'general', count: 1 }],
-      emotions: { joy: 10, sadness: 10, anger: 10, fear: 10, surprise: 10, disgust: 10 },
-      sentiment: { POSITIVE: 50, NEGATIVE: 50 },
-      totalAnalyzed: 100,
-      topKeywords: [{ keyword: 'app', count: 1 }]
+      topTopics: [],
+      emotions: {},
+      sentiment: {},
+      totalAnalyzed: 0,
+      topKeywords: []
     };
+
+    if (!overall.totalAnalyzed || overall.totalAnalyzed <= 0) {
+      return { rawData: analyticsData, parsedData: null, isEmpty: true };
+    }
 
     // Process ratingData from topTopics
     const maxTopicCount = Math.max(...overall.topTopics.map(t => t.count), 1);
@@ -151,8 +160,8 @@ const fetchAnalyticsData = async () => {
         radarData: radarData,
         sentimentData: { posPct, neuPct, negPct, label: "POSITIVE" },
         totalAnalyzed: total,
-        topTopic: overall.topTopics[0]?.topic || 'general',
-        topKeyword: overall.topKeywords[0]?.keyword || 'app',
+        topTopic: overall.topTopics[0]?.topic || 'No topic yet',
+        topKeyword: overall.topKeywords[0]?.keyword || 'No keyword yet',
         trendData: [
           { month: "Jan", rating: 3.8 },
           { month: "Feb", rating: 4.0 },
@@ -163,7 +172,8 @@ const fetchAnalyticsData = async () => {
           { month: "Jul", rating: Math.max(0, avgRating - 0.1) },
           { month: "Aug", rating: avgRating },
         ]
-      }
+      },
+      isEmpty: false
     };
   } catch (err) {
     console.error("Failed to fetch analytics from Supabase", err);
@@ -299,27 +309,41 @@ function AISummaryView({ rawData }) {
    ROOT DASHBOARD (InsightEngine)
 ───────────────────────────────────────────────────────────── */
 export default function Dashboard() {
+  const { companyId, companyName } = useAuth();
   const [activeView, setActiveView] = useState('Dashboard');
   const [globalRawData, setGlobalRawData] = useState(null);
   const [globalParsedData, setGlobalParsedData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEmpty, setIsEmpty] = useState(false);
 
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetchAnalyticsData();
+      const response = await fetchAnalyticsData(companyId);
       setGlobalRawData(response.rawData);
       setGlobalParsedData(response.parsedData);
+      setIsEmpty(response.isEmpty);
     } catch (error) {
       console.error("Failed to fetch analytics data", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  const emptyState = (
+    <div className={styles.emptyState}>
+      <div className={styles.emptyIcon}>No data</div>
+      <h1>No reviews to analyze yet.</h1>
+      <p>Data will appear here once reviews are collected{companyName ? ` for ${companyName}` : ''}.</p>
+      <button type="button" className={styles.emptyButton} onClick={loadDashboardData}>
+        Refresh
+      </button>
+    </div>
+  );
 
   return (
     <div className={styles.dashboardContainer}>
@@ -328,6 +352,8 @@ export default function Dashboard() {
       <main className={styles.mainContent}>
         {isLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '600px', color: 'var(--text2)' }}>Loading Analytics Data...</div>
+        ) : isEmpty ? (
+          emptyState
         ) : (
           <>
             {activeView === 'Location Insights' && <LocationInsights data={globalRawData} />}

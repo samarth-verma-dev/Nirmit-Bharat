@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import LoadingSpinner from './LoadingSpinner'
 
 export const ProtectedRoute = ({ children, allowedRole }) => {
   const { user, role, loading } = useAuth()
@@ -7,8 +8,8 @@ export const ProtectedRoute = ({ children, allowedRole }) => {
 
   if (loading) {
     return (
-      <div className="center-screen">
-        <div className="loader"></div>
+      <div className="center-screen" style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <LoadingSpinner text="Authenticating..." />
       </div>
     )
   }

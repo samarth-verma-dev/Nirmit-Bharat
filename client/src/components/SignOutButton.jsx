@@ -1,14 +1,18 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../services/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export default function SignOutButton({ className, style }) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
+      // Clear onboarding wizard localStorage
+      localStorage.removeItem('adminOnboardingStep');
+      localStorage.removeItem('adminOnboardingData');
       navigate('/', { replace: true });
     } catch (error) {
       console.error('Error signing out:', error);
@@ -16,7 +20,7 @@ export default function SignOutButton({ className, style }) {
   };
 
   return (
-    <button 
+    <button
       onClick={handleSignOut}
       className={className}
       style={{
@@ -35,7 +39,7 @@ export default function SignOutButton({ className, style }) {
         cursor: 'pointer',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
         transition: 'all 0.2s ease',
-        ...style
+        ...style,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = '#f9fafb';

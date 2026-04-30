@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../services/supabase'
+import * as authService from '../services/authService'
 import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import './auth-modern.css'
 export default function Auth() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, role, loading: authLoading } = useAuth()
+  const { user, role, loading: authLoading, refreshWorkspace } = useAuth()
   const roleFromState = location.state?.role ?? 'admin'
 
   // ── ALL STATE DECLARED FIRST (before any useEffect that references them) ──
@@ -23,24 +24,34 @@ export default function Auth() {
   const [step, setStep] = useState(roleFromState === 'employee' ? 'invite' : 'auth')
   const [inviteEmail, setInviteEmail] = useState(location.state?.prefillEmail ?? '')
   const [companyCode, setCompanyCode] = useState(location.state?.prefillCode ?? '')
+  const [inviteToken] = useState(location.state?.inviteToken ?? '')
   const [codeLoading, setCodeLoading] = useState(false)
   const [codeError, setCodeError] = useState('')
   const [validatedCompanyId, setValidatedCompanyId] = useState(null)
   const [validatedInviteId, setValidatedInviteId] = useState(null)
   const [joinSuccess, setJoinSuccess] = useState(false)
+  const isLogin = authMode === 'login'
+  const isEmployee = roleFromState === 'employee'
 
   // ── REDIRECT ALREADY-AUTHENTICATED USERS ─────────────────────────────────
   // EXCEPTION: If an employee is mid-invite-validation, do NOT redirect yet.
   useEffect(() => {
     if (!authLoading && user && role) {
+      if (isEmployee && validatedCompanyId && !joinSuccess) return
+      if (isEmployee && joinSuccess) return
       if (role === 'employee' && step === 'invite') return
       const target = role === 'admin' ? '/admin' : '/dashboard'
       navigate(target, { replace: true })
     }
-  }, [user, role, authLoading, navigate, step])
+  }, [user, role, authLoading, navigate, step, isEmployee, validatedCompanyId, joinSuccess])
 
-  const isLogin = authMode === 'login'
-  const isEmployee = roleFromState === 'employee'
+  useEffect(() => {
+    if (roleFromState) {
+      if (roleFromState === 'employee') {
+        sessionStorage.setItem('pending_invite_role', 'employee')
+      }
+    }
+  }, [roleFromState])
 
   const isValid = () => {
     if (!email.includes('@') || password.length < 6) return false
@@ -58,23 +69,27 @@ export default function Auth() {
   const handlePostAuth = async (user) => {
     try {
       if (isEmployee && validatedCompanyId) {
-        // Check if already a member to avoid duplicate inserts
-        const { data: existing } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('company_id', validatedCompanyId)
-          .maybeSingle()
-
-        if (!existing) {
-          const { error: insertErr } = await supabase.from('employees').insert({
-            user_id: user.id,
-            company_id: validatedCompanyId,
-            role: 'employee'
+        if (inviteToken) {
+          const { error: acceptErr } = await supabase.rpc('accept_company_invite', {
+            p_token: inviteToken
           })
-          if (insertErr) {
-            setError(insertErr.message)
-            return
+          if (acceptErr) throw acceptErr
+        } else {
+          // Legacy invite-code fallback.
+          const { data: existing } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('company_id', validatedCompanyId)
+            .maybeSingle()
+
+          if (!existing) {
+            const { error: insertErr } = await supabase.from('employees').insert({
+              user_id: user.id,
+              company_id: validatedCompanyId,
+              role: 'employee'
+            })
+            if (insertErr) throw insertErr
           }
         }
 
@@ -87,7 +102,8 @@ export default function Auth() {
         }
 
         setJoinSuccess(true)
-        setTimeout(() => navigate('/dashboard', { replace: true }), 1800)
+        await refreshWorkspace?.()
+        setTimeout(() => navigate('/dashboard', { replace: true }), 1200)
       }
       // If not handling an invite link, do nothing here.
       // The useEffect listening to 'role' will automatically route the user
@@ -107,14 +123,12 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        const data = await authService.signIn(email, password)
         if (!data?.user) throw new Error('No user returned from login')
         // Route correctly: employees link workspace, admins go to /admin
         await handlePostAuth(data.user)
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
+        const data = await authService.signUp(email, password)
         // For new signups that are employees with a validated invite, link immediately
         if (data?.user && isEmployee && validatedCompanyId) {
           await handlePostAuth(data.user)
@@ -134,17 +148,40 @@ export default function Auth() {
   // ── INVITE CODE VALIDATION ────────────────────────────────────────────────
   const handleCodeSubmit = async () => {
     if (!inviteEmail.trim() || !inviteEmail.includes('@')) { setCodeError('Please enter a valid email address.'); return }
-    if (!companyCode.trim()) { setCodeError('Please enter your invite code.'); return }
+    if (!inviteToken && !companyCode.trim()) { setCodeError('Please enter your invite code.'); return }
     setCodeLoading(true)
     setCodeError('')
 
     try {
-      // Look up invite by code + email
+      if (inviteToken) {
+        const { data: tokenList, error: tokenErr } = await supabase.rpc('validate_company_invite_token', {
+          p_token: inviteToken,
+          p_email: inviteEmail.trim()
+        })
+
+        if (tokenErr) {
+          setCodeError(`Invalid invite. DB Error: ${tokenErr.message}`)
+          return
+        }
+
+        const invite = Array.isArray(tokenList) ? tokenList[0] : tokenList
+        if (!invite || invite.status !== 'pending') {
+          setCodeError(invite?.status === 'expired' ? 'This invite has expired. Ask your admin for a new one.' : 'This email is not on the pending invite list.')
+          return
+        }
+
+        setEmail(inviteEmail.trim().toLowerCase())
+        setValidatedCompanyId(invite.company_id)
+        setAuthMode(invite.registered ? 'login' : 'signup')
+        setStep('auth')
+        return
+      }
+
       const { data: inviteList, error: lookupErr } = await supabase
-        .from('invites')
-        .select('id, company_id, expires_at, status')
-        .eq('invite_code', companyCode.trim().toUpperCase())
-        .eq('email', inviteEmail.trim().toLowerCase())
+        .rpc('validate_workspace_invite_code', {
+          p_invite_code: companyCode.trim(),
+          p_email: inviteEmail.trim()
+        })
 
       if (lookupErr) {
         setCodeError(`Invalid invite. DB Error: ${lookupErr.message}`)
@@ -152,7 +189,7 @@ export default function Auth() {
       }
 
       if (!inviteList || inviteList.length === 0) {
-        setCodeError('Invalid invite. Make sure your email and code match the invite sent by your admin.')
+        setCodeError('Invalid invite. Make sure the code matches the workspace code shared by your admin.')
         return
       }
 
@@ -172,7 +209,7 @@ export default function Auth() {
       // Valid! Pre-fill email for login/signup step
       setEmail(inviteEmail.trim().toLowerCase())
       setValidatedCompanyId(invite.company_id)
-      setValidatedInviteId(invite.id)
+      setValidatedInviteId(invite.invite_id)
       setStep('auth')
     } catch (e) {
       console.error('Code submit error:', e)
@@ -264,6 +301,7 @@ export default function Auth() {
             />
           </div>
 
+          {!inviteToken && (
           <div className="auth-input-group" style={{ marginBottom: 24 }}>
             <label className="auth-label">Referral / Invite Code</label>
             <p style={{fontSize: '0.75rem', color: '#6B7280', marginBottom: 4}}>Enter the code shared by your admin</p>
@@ -277,13 +315,14 @@ export default function Auth() {
               onKeyDown={e => e.key === 'Enter' && handleCodeSubmit()}
             />
           </div>
+          )}
 
           {codeError && <div className="auth-error">⚠ {codeError.includes('Invalid invite') ? 'Invalid referral code. Please check with your admin and try again.' : codeError}</div>}
 
           <button 
             className="auth-button" 
             onClick={handleCodeSubmit}
-            disabled={!companyCode.trim() || codeLoading}
+            disabled={(!inviteToken && !companyCode.trim()) || codeLoading}
           >
             {codeLoading ? <span className="loader" /> : 'Access Workspace'}
           </button>

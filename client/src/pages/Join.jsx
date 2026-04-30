@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 /**
- * /join?code=REVIEW-XXXX&email=someone@company.com
+ * /join?token=secure-company-token&email=someone@company.com
  *
  * Auto-reads URL params and redirects to /auth with pre-filled values
  * so the employee sees their email + code already populated.
@@ -12,6 +12,7 @@ export default function Join() {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
+    const token = searchParams.get('token') ?? ''
     const code = searchParams.get('code') ?? ''
     const email = searchParams.get('email') ?? ''
 
@@ -20,6 +21,7 @@ export default function Join() {
       replace: true,
       state: {
         role: 'employee',
+        inviteToken: token,
         prefillCode: code,
         prefillEmail: email
       }

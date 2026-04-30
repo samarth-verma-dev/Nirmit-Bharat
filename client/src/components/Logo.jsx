@@ -1,11 +1,9 @@
 import React from 'react';
 
 export default function Logo({ className, style, width = 64, height = 64, light = false }) {
-  // Since the user wants a circular shape format, we add a circle background.
-  const circleBg = light ? '#FFFFFF' : '#3E52A3';
-  const textColor = light ? '#3E52A3' : '#FFFFFF';
-  const aiBoxColor = light ? '#7ECEF4' : 'rgba(255,255,255,0.2)';
-  const aiTextColor = light ? '#3E52A3' : '#FFFFFF';
+  // Website color theme background: #F0EAE5
+  const circleBg = '#F0EAE5';
+  const bridgeColor = '#214C9B'; // Matches the dark blue from the icon
 
   return (
     <svg 
@@ -18,34 +16,45 @@ export default function Logo({ className, style, width = 64, height = 64, light 
       xmlns="http://www.w3.org/2000/svg"
     >
       <circle cx="100" cy="100" r="100" fill={circleBg} />
-      <g transform="translate(17.5, 50)">
-        <g stroke={textColor} strokeWidth="8" strokeLinecap="square" strokeLinejoin="miter">
-          {/* S */}
-          <polyline points="32,14 10,14 10,50 32,50 32,86 10,86" />
-          {/* E */}
-          <polyline points="66,14 44,14 44,86 66,86" />
-          <line x1="44" y1="50" x2="60" y2="50" />
-          {/* T */}
-          <line x1="78" y1="14" x2="100" y2="14" />
-          <line x1="89" y1="14" x2="89" y2="86" />
-          {/* U */}
-          <polyline points="112,14 112,86 134,86 134,14" />
-        </g>
+      
+      <g stroke={bridgeColor} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        {/* Bridge Deck */}
+        <line x1="30" y1="95" x2="170" y2="95" />
         
-        {/* AI Box */}
-        <rect x="140" y="10" width="24" height="24" fill={aiBoxColor} />
-        <text 
-          x="152" 
-          y="27" 
-          fontFamily="sans-serif" 
-          fontWeight="800" 
-          fontSize="14" 
-          fill={aiTextColor} 
-          textAnchor="middle"
-          letterSpacing="-0.5"
-        >
-          AI
-        </text>
+        {/* Pillars above deck */}
+        <line x1="100" y1="40" x2="100" y2="95" /> {/* Center */}
+        <line x1="70" y1="60" x2="70" y2="95" />   {/* Inner Left */}
+        <line x1="130" y1="60" x2="130" y2="95" /> {/* Inner Right */}
+        <line x1="45" y1="75" x2="45" y2="95" />   {/* Outer Left */}
+        <line x1="155" y1="75" x2="155" y2="95" /> {/* Outer Right */}
+        
+        {/* Cables - Left */}
+        <path d="M 100 45 Q 85 55 70 60" />
+        <path d="M 70 60 Q 57 70 45 75" />
+        <path d="M 45 75 Q 37 85 30 95" />
+        
+        <path d="M 100 65 Q 85 70 70 75" />
+        <path d="M 70 75 Q 57 80 45 85" />
+        
+        {/* Cables - Right */}
+        <path d="M 100 45 Q 115 55 130 60" />
+        <path d="M 130 60 Q 143 70 155 75" />
+        <path d="M 155 75 Q 163 85 170 95" />
+        
+        <path d="M 100 65 Q 115 70 130 75" />
+        <path d="M 130 75 Q 143 80 155 85" />
+
+        {/* Pillars below deck */}
+        <line x1="70" y1="95" x2="70" y2="115" />
+        <line x1="130" y1="95" x2="130" y2="115" />
+
+        {/* Center arch below deck */}
+        <path d="M 70 115 Q 100 85 130 115" />
+
+        {/* Waves */}
+        <path d="M 40 125 Q 55 140 70 125 T 100 125 T 130 125 T 160 125" />
+        <path d="M 60 150 Q 80 165 100 150 T 140 150" />
+        <path d="M 85 170 Q 100 180 115 170" />
       </g>
     </svg>
   );

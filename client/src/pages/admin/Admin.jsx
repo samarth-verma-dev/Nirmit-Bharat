@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { fetchAppMetadata } from '../../services/appAutofill'
+import { finalizeCompanyDraft, loadCompanyDraft, saveCompanyDraft } from '../../services/companyDrafts'
+import { sendCompanyInvites, validateInviteEmails } from '../../services/invites'
 import Logo from '../../components/Logo'
+import DataSources from '../dashboard/DataSources'
 import '../auth-modern.css'
 
 const STEPS = [
@@ -30,13 +33,43 @@ const MOCK_APPS = [
 const genInviteCode = () =>
   'REVIEW-' + Math.random().toString(36).substring(2, 6).toUpperCase()
 
+const DEFAULT_WIZARD_DATA = {
+  companyName: '',
+  companyId: null,
+  inviteCode: '',
+  appName: '',
+  androidPackage: '',
+  iosAppId: '',
+  socialSources: [],
+  timeframe: 'Last 30 days',
+  alertsEnabled: false,
+  adminFullName: '',
+  businessType: 'SaaS',
+  reviewSources: [],
+  websiteUrl: '',
+  noSystem: false
+}
+
+const normalizeWizardData = (data = {}) => ({
+  ...DEFAULT_WIZARD_DATA,
+  ...data,
+  reviewSources: data.reviewSources || [],
+  socialSources: data.socialSources || []
+})
+
+const hasDraftContent = (data, step) =>
+  step > 1 ||
+  Boolean(data.inviteCode) ||
+  Object.entries(data).some(([key, value]) => {
+    if (['timeframe', 'businessType', 'noSystem', 'alertsEnabled'].includes(key)) return false
+    if (Array.isArray(value)) return value.length > 0
+    return Boolean(value)
+  })
+
 export default function Admin() {
   const navigate = useNavigate()
 
-  const [currentStep, setCurrentStep] = useState(() => {
-    const saved = localStorage.getItem('adminOnboardingStep')
-    return saved ? parseInt(saved, 10) : 1
-  })
+  const [currentStep, setCurrentStep] = useState(1)
   const [isComplete, setIsComplete] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
 
@@ -51,12 +84,17 @@ export default function Admin() {
   const [selectedCompany, setSelectedCompany] = useState(null)
   const [showDashboard, setShowDashboard] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(true)
+  const [draftId, setDraftId] = useState(null)
+  const [draftSaveState, setDraftSaveState] = useState('idle')
+  const draftLoadedRef = useRef(false)
 
   // Invite email state
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteMsg, setInviteMsg] = useState(null)
-  const [isCopied, setIsCopied] = useState(false)
+  const [companyStats, setCompanyStats] = useState({ employees: 0, reviews: 0 })
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [statsLoading, setStatsLoading] = useState(false)
 
   // Edit mode for existing company settings
   const [isEditing, setIsEditing] = useState(false)
@@ -68,7 +106,8 @@ export default function Admin() {
     socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false
   })
 
-  const [wizardData, setWizardData] = useState(() => {
+  const [wizardData, setWizardData] = useState(DEFAULT_WIZARD_DATA)
+  /*
     const defaultData = {
       companyName: '',
       companyId: null,
@@ -109,6 +148,40 @@ export default function Admin() {
     localStorage.setItem('adminOnboardingStep', currentStep.toString())
     localStorage.setItem('adminOnboardingData', JSON.stringify(wizardData))
   }, [currentStep, wizardData])
+
+  // Sync FORM DATA across tabs (but NOT the step number — each tab navigates independently)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      // Do NOT sync 'adminOnboardingStep' — it would force the other tab to jump steps unexpectedly.
+      // Only sync the payload so that field values entered on one tab appear on the other.
+      if (e.key === 'adminOnboardingData') {
+        try {
+          const parsed = JSON.parse(e.newValue)
+          if (parsed) {
+            setWizardData(prev => ({
+              ...prev,
+              // Only sync fields that don't affect navigation (no companyId or step-gating flags)
+              companyName: parsed.companyName ?? prev.companyName,
+              adminFullName: parsed.adminFullName ?? prev.adminFullName,
+              businessType: parsed.businessType ?? prev.businessType,
+              reviewSources: parsed.reviewSources ?? prev.reviewSources,
+              androidPackage: parsed.androidPackage ?? prev.androidPackage,
+              iosAppId: parsed.iosAppId ?? prev.iosAppId,
+              socialSources: parsed.socialSources ?? prev.socialSources,
+              websiteUrl: parsed.websiteUrl ?? prev.websiteUrl,
+              timeframe: parsed.timeframe ?? prev.timeframe,
+            }))
+          }
+        } catch (err) {
+          console.warn('[Admin] Cross-tab sync parse error:', err)
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  */
 
   // Social step local state
   const [socialPlatform, setSocialPlatform] = useState(SOCIAL_PLATFORMS[0])
@@ -235,22 +308,23 @@ export default function Admin() {
 
     setStep1Loading(true)
     setStep1Error('')
-    const { data: { user } } = await supabase.auth.getUser()
-    const code = genInviteCode()
+    const updatedWizardData = {
+      ...wizardData,
+      inviteCode: wizardData.inviteCode || genInviteCode()
+    }
 
-    const { data, error } = await supabase
-      .from('companies')
-      .insert({ name: wizardData.companyName, created_by: user?.id, invite_code: code })
-      .select()
-      .single()
-
-    if (error) {
-      setStep1Error(error.message)
-    } else {
-      handleUpdate('companyId', data.id)
-      handleUpdate('inviteCode', data.invite_code)
-      setCompanies(prev => [...prev, data])
+    try {
+      const saved = await saveCompanyDraft({
+        draftId,
+        currentStep: 2,
+        formData: updatedWizardData
+      })
+      setDraftId(saved.id)
+      setWizardData(normalizeWizardData(saved.form_data))
+      setDraftSaveState('saved')
       nextStep()
+    } catch (error) {
+      setStep1Error(error.message)
     }
     setStep1Loading(false)
   }
@@ -260,97 +334,149 @@ export default function Admin() {
     setStep5Loading(true)
     setStep5Error('')
 
-    const { error } = await supabase.from('projects').insert({
-      company_id: wizardData.companyId,
-      app_name: wizardData.appName,
-      android_package: wizardData.androidPackage,
-      ios_app_id: wizardData.iosAppId,
-      social_handles: wizardData.socialSources,
-      timeframe: wizardData.timeframe,
-      alerts_enabled: wizardData.alertsEnabled
-    })
-
-    if (error) {
-      setStep5Error(error.message)
-    } else {
-      // Clear localStorage after completion
-      localStorage.removeItem('adminOnboardingStep')
-      localStorage.removeItem('adminOnboardingData')
-
-      const newCompany = companies.find(c => c.id === wizardData.companyId)
-      if (newCompany) {
-        setSelectedCompany(newCompany)
-        localStorage.setItem('selectedCompanyId', newCompany.id)
-        setShowDashboard(true)
-      } else {
-        const { data: fetched } = await supabase
-          .from('companies').select('*').eq('id', wizardData.companyId).maybeSingle()
-        if (fetched) {
-          setCompanies(prev => [...prev, fetched])
-          setSelectedCompany(fetched)
-          localStorage.setItem('selectedCompanyId', fetched.id)
-        }
-        setShowDashboard(true)
+    try {
+      let activeDraftId = draftId
+      if (!activeDraftId) {
+        const saved = await saveCompanyDraft({
+          draftId: null,
+          currentStep,
+          formData: {
+            ...wizardData,
+            inviteCode: wizardData.inviteCode || genInviteCode()
+          }
+        })
+        activeDraftId = saved.id
+        setDraftId(saved.id)
       }
+
+      const finalized = await finalizeCompanyDraft(activeDraftId)
+      const newCompany = {
+        id: finalized.company_id,
+        name: finalized.company_name,
+        invite_code: finalized.invite_code,
+        created_by: user?.id
+      }
+
+      setDraftId(null)
+      setWizardData(DEFAULT_WIZARD_DATA)
+      setCompanies(prev => [...prev.filter(c => c.id !== newCompany.id), newCompany])
+      setSelectedCompany(newCompany)
+      localStorage.setItem('selectedCompanyId', newCompany.id)
+      setShowDashboard(true)
+    } catch (error) {
+      setStep5Error(error.message)
     }
     setStep5Loading(false)
   }
 
   // ── Invite via email ───────────────────────────────────────────────────────
   const handleSendInvite = async () => {
-    if (!inviteEmail.trim() || !inviteEmail.includes('@')) {
-      setInviteMsg({ type: 'error', text: 'Please enter a valid email address.' })
+    const { emails, invalid } = validateInviteEmails(inviteEmail)
+    if (emails.length === 0) {
+      setInviteMsg({ type: 'error', text: 'Enter at least one work email.' })
       return
     }
+    if (invalid.length > 0) {
+      setInviteMsg({ type: 'error', text: `Check these email addresses: ${invalid.join(', ')}` })
+      return
+    }
+
+    const companyId = selectedCompany?.id ?? wizardData.companyId
+    if (!companyId) {
+      setInviteMsg({ type: 'error', text: 'Select or finish creating a company before sending invites.' })
+      return
+    }
+
     setInviteLoading(true)
     setInviteMsg(null)
 
-    const companyId = selectedCompany?.id ?? wizardData.companyId
-    const inviteCode = selectedCompany?.invite_code ?? wizardData.inviteCode
-    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() // 72h from now
-
-    const { error } = await supabase.from('invites').insert({
-      email: inviteEmail.trim().toLowerCase(),
-      company_id: companyId,
-      invite_code: inviteCode,
-      status: 'pending',
-      expires_at: expiresAt
-    })
-
-    if (error) {
-      setInviteMsg({ type: 'error', text: error.message })
-    } else {
-      const joinLink = `${window.location.origin}/join?code=${inviteCode}&email=${encodeURIComponent(inviteEmail.trim().toLowerCase())}`
+    try {
+      const result = await sendCompanyInvites({ companyId, emails })
       setInviteMsg({
         type: 'success',
-        text: `Invite created for ${inviteEmail}. Link: ${joinLink}`,
-        link: joinLink
+        text: `${result.email_count || emails.length} invite${emails.length === 1 ? '' : 's'} sent. Links expire in 72 hours.${result.warning ? ` ${result.warning}` : ''}`
       })
       setInviteEmail('')
+      await loadCompanyStats(companyId)
+    } catch (error) {
+      setInviteMsg({ type: 'error', text: error.message || 'Unable to send invites.' })
+    } finally {
+      setInviteLoading(false)
     }
-    setInviteLoading(false)
   }
 
+  const { user, signOut } = useAuth()
+
+  const loadCompanyStats = async (companyId) => {
+    if (!companyId) return
+    setStatsLoading(true)
+
+    const [employeesRes, reviewsRes, invitesRes] = await Promise.all([
+      supabase
+        .from('employees')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+      supabase
+        .from('analytics_summaries')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+      supabase
+        .from('invites')
+        .select('id,email,status,expires_at,sent_at,created_at')
+        .eq('company_id', companyId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(10)
+    ])
+
+    if (!employeesRes.error || !reviewsRes.error) {
+      setCompanyStats({
+        employees: employeesRes.count ?? 0,
+        reviews: reviewsRes.count ?? 0
+      })
+    }
+
+    if (!invitesRes.error) {
+      setPendingInvites(invitesRes.data || [])
+    }
+
+    setStatsLoading(false)
+  }
+
+  useEffect(() => {
+    if (!user || !draftLoadedRef.current || showDashboard || !hasDraftContent(wizardData, currentStep)) {
+      return
+    }
+
+    const timeout = setTimeout(async () => {
+      setDraftSaveState('saving')
+      try {
+        const saved = await saveCompanyDraft({ draftId, currentStep, formData: wizardData })
+        setDraftId(saved.id)
+        setDraftSaveState('saved')
+      } catch (error) {
+        console.error('Error autosaving company draft:', error)
+        setDraftSaveState('error')
+      }
+    }, 700)
+
+    return () => clearTimeout(timeout)
+  }, [currentStep, draftId, showDashboard, user, wizardData])
+
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    localStorage.removeItem('adminOnboardingStep')
-    localStorage.removeItem('adminOnboardingData')
+    await signOut()
     navigate('/', { replace: true })
   }
 
-  const handleCopyCode = () => {
-    const code = selectedCompany ? selectedCompany.invite_code : wizardData.inviteCode
-    navigator.clipboard.writeText(code)
-    setIsCopied(true)
-    setTimeout(() => setIsCopied(false), 2000)
-  }
-
-  const { user } = useAuth()
+  // Fetch companies for the logged‑in admin
 
   // Fetch companies for the logged‑in admin
   useEffect(() => {
     const fetchCompanies = async () => {
-      if (!user) return
+      if (!user) {
+        setLoadingCompanies(false)
+        return
+      }
 
       try {
         const { data, error } = await supabase
@@ -361,7 +487,22 @@ export default function Admin() {
           console.error('Error fetching companies', error)
           return
         }
+        const draft = await loadCompanyDraft()
         setCompanies(data)
+
+        if (draft) {
+          const formData = normalizeWizardData(draft.form_data)
+          setDraftId(draft.id)
+          setWizardData(formData)
+          setAppSearchQuery(formData.appName || '')
+          setCurrentStep(draft.current_step || 1)
+          setShowDashboard(false)
+          setSelectedCompany(null)
+          draftLoadedRef.current = true
+          return
+        }
+
+        draftLoadedRef.current = true
         if (data && data.length > 0) {
           const stored = localStorage.getItem('selectedCompanyId')
           const preselected = data.find(c => c.id === stored) || data[0]
@@ -373,6 +514,7 @@ export default function Admin() {
         }
       } catch (err) {
         console.error('Unexpected error fetching companies:', err)
+        draftLoadedRef.current = true
       } finally {
         setLoadingCompanies(false)
       }
@@ -386,16 +528,18 @@ export default function Admin() {
     localStorage.setItem('selectedCompanyId', company.id)
   }
 
+  useEffect(() => {
+    if (selectedCompany?.id) {
+      loadCompanyStats(selectedCompany.id)
+    }
+  }, [selectedCompany?.id])
+
   const handleAddNewCompany = () => {
     setShowDashboard(false)
     setCurrentStep(1)
-    setWizardData({
-      companyName: '', companyId: null, inviteCode: '',
-      appName: '', androidPackage: '', iosAppId: '',
-      socialSources: [], timeframe: 'Last 30 days', alertsEnabled: false,
-      adminFullName: '', businessType: 'SaaS', reviewSources: [],
-      websiteUrl: '', noSystem: false
-    })
+    setDraftId(null)
+    setDraftSaveState('idle')
+    setWizardData(DEFAULT_WIZARD_DATA)
   }
 
   const handleEditCompany = async () => {
@@ -804,128 +948,12 @@ export default function Admin() {
             </div>
             <div>
               <h2 className="auth-title" style={{ fontSize: '1.8rem' }}>Connect your sources</h2>
-              <p className="auth-subtitle" style={{ marginBottom: 0 }}>Almost done! Link your platforms so we can start analyzing.</p>
+              <p className="auth-subtitle" style={{ marginBottom: 0 }}>Configure your API or Demo integrations to fetch reviews.</p>
             </div>
           </div>
 
           <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 8, paddingBottom: 16 }}>
-            {showApps && (
-              <div style={{ marginBottom: 32 }}>
-                <div className="divider-label">App Details</div>
-                <div className="field-group">
-                  <label>App Name</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <div className="search-input-wrap" style={{ flex: 1 }}>
-                      <input 
-                        type="text" 
-                        placeholder="Search your app..." 
-                        value={appSearchQuery} 
-                        onChange={e => handleAppSearch(e.target.value)} 
-                        onFocus={() => appSearchQuery.trim().length > 1 && setIsSearching(true)}
-                        onBlur={() => setTimeout(() => setIsSearching(false), 200)}
-                      />
-                      {isSearching && appSearchResults.length > 0 && (
-                        <div className="search-dropdown">
-                          {appSearchResults.map((app, i) => (
-                            <div key={i} className="search-result-item" onMouseDown={() => handleSelectMockApp(app)}>
-                              <div className="app-icon-ph">{app.name.charAt(0)}</div>
-                              <div>
-                                <div className="app-res-title">{app.name}</div>
-                                <div className="app-res-dev">{app.developer}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button 
-                      className="btn btn-secondary" 
-                      style={{ flexShrink: 0, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
-                      onClick={handleAutofillClick}
-                      disabled={autofillLoading || appSearchQuery.trim().length <= 1}
-                    >
-                      {autofillLoading ? <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '✨ Autofill'}
-                    </button>
-                  </div>
-                  {appVerified && autofillIcon && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '8px 12px', background: 'rgba(31,77,59,0.06)', borderRadius: 8, border: '1px solid rgba(31,77,59,0.15)' }}>
-                      <img src={autofillIcon} alt="App icon" style={{ width: 36, height: 36, borderRadius: 8 }} />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--primary)' }}>✓ App details filled automatically</div>
-                      </div>
-                    </div>
-                  )}
-                  {autofillError && <div className="wiz-alert wiz-alert--error" style={{ marginTop: 10 }}>⚠ {autofillError}</div>}
-                </div>
-                
-                {wizardData.reviewSources.includes('Play Store') && (
-                  <div className="field-group">
-                    <label>Android Package <span className="opt">(e.g. com.example.app)</span></label>
-                    <input type="text" value={wizardData.androidPackage} onChange={e => handleManualPackage(e.target.value)} />
-                    {packageError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 4 }}>{packageError}</div>}
-                  </div>
-                )}
-                
-                {wizardData.reviewSources.includes('App Store') && (
-                  <div className="field-group">
-                    <label>iOS App ID <span className="opt">(e.g. id123456789)</span></label>
-                    <input type="text" value={wizardData.iosAppId} onChange={e => handleManualIos(e.target.value)} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showSocial && (
-              <div style={{ marginBottom: 32 }}>
-                <div className="divider-label">Social Media</div>
-                <div className="platform-selector">
-                  {SOCIAL_PLATFORMS.map(p => (
-                    <button key={p} className={`platform-btn ${socialPlatform === p ? 'active' : ''}`} onClick={() => setSocialPlatform(p)}>{p}</button>
-                  ))}
-                </div>
-                <div className="social-add-wrap">
-                  <div className="field-group" style={{ marginBottom: 0 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input type="text" placeholder={socialPlatform === 'Instagram' || socialPlatform === 'Twitter/X' ? '@brandname' : 'Channel or Handle ID'} value={socialHandle} onChange={e => setSocialHandle(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSocialSource()} style={{ flex: 1 }} />
-                      <button className="btn btn-secondary" style={{ flexShrink: 0 }} onClick={addSocialSource}>Add</button>
-                    </div>
-                  </div>
-                  {socialError && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 8, fontWeight: 500 }}>{socialError}</div>}
-                </div>
-                {wizardData.socialSources.length > 0 && (
-                  <div className="source-list">
-                    {wizardData.socialSources.map((s, i) => (
-                      <div key={i} className="source-tag" style={{ marginBottom: 4 }}>
-                        <div>
-                          <span className="source-platform">{s.platform}</span><span className="source-handle">{s.handle}</span>
-                        </div>
-                        <button className="source-remove" onClick={() => removeSocialSource(i)}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showWeb && (
-              <div style={{ marginBottom: 32 }}>
-                <div className="divider-label">Website</div>
-                <div className="field-group">
-                  <label>Website URL</label>
-                  <input type="url" placeholder="https://www.example.com" value={wizardData.websiteUrl} onChange={e => handleUpdate('websiteUrl', e.target.value)} />
-                </div>
-              </div>
-            )}
-
-            {showPersonal && (
-              <div style={{ marginBottom: 32 }}>
-                <div className="divider-label">Personal Data Upload</div>
-                <div className="upload-area" onClick={() => alert("Upload dialog will open in full version")}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <span>Click or drag CSV/JSON files here</span>
-                </div>
-              </div>
-            )}
+             <DataSources hideHeader={true} />
           </div>
 
           <div className="btn-row spaced">
@@ -1017,9 +1045,6 @@ export default function Admin() {
   // ADMIN HOME VIEW (returned admins - NO analytics, management only)
   // ─────────────────────────────────────────────────────────────────────────
   const renderAdminHome = () => {
-    const inviteCode = selectedCompany?.invite_code || wizardData.inviteCode
-    const joinLink = `${window.location.origin}/join?code=${inviteCode}&email=`
-
     return (
       <div className="modern-auth-container">
         {/* SVG filter for the noise effect */}
@@ -1066,38 +1091,26 @@ export default function Admin() {
           {/* Invite Section */}
           <div className="card" style={{ padding: 28, marginBottom: 24 }}>
             <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>Invite Team Members</div>
-            <p style={{ color: 'var(--text2)', fontSize: '0.85rem', marginBottom: 16 }}>Share this link or code with employees to grant access.</p>
+            <p style={{ color: 'var(--text2)', fontSize: '0.85rem', marginBottom: 16 }}>Paste multiple emails separated by commas, spaces, or new lines.</p>
 
             {/* Invite Code display */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.1em', color: 'var(--primary)' }}>
-                {inviteCode}
+                Secure email invite links are generated automatically and never shown in the console.
               </div>
               <div style={{ position: 'relative' }}>
-                <button className="btn btn-ghost" onClick={handleCopyCode}>{isCopied ? '✓ Copied!' : '⎘ Copy Code'}</button>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text2)' }}>Expires in 72h</span>
               </div>
-            </div>
-
-            {/* Join link */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>Join Link (share with employee email appended)</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input readOnly value={joinLink} style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', fontFamily: 'monospace', background: 'var(--surface2)', color: 'var(--text2)' }} onClick={e => e.target.select()} />
-                <button className="btn btn-ghost" style={{ fontSize: '0.8rem', flexShrink: 0 }} onClick={() => navigator.clipboard.writeText(joinLink)}>Copy</button>
-              </div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text2)', marginTop: 4 }}>Tip: append <code>?email=employee@company.com</code> to pre-fill their email.</p>
             </div>
 
             {/* Email invite */}
             <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 8 }}>Send Invite via Email</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input
-                type="email"
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'start' }}>
+              <textarea
                 placeholder="colleague@company.com"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
-                style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', fontFamily: 'var(--font)', outline: 'none' }}
+                style={{ minHeight: 84, resize: 'vertical', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', fontFamily: 'var(--font)', outline: 'none', lineHeight: 1.5 }}
               />
               <button className="btn btn-primary" onClick={handleSendInvite} disabled={inviteLoading}>
                 {inviteLoading ? <span className="loader" /> : 'Send Invite'}
@@ -1105,13 +1118,38 @@ export default function Admin() {
             </div>
             {inviteMsg && (
               <div className={`wiz-alert wiz-alert--${inviteMsg.type}`} style={{ marginTop: 10 }}>
-                {inviteMsg.type === 'success' ? '✓' : '⚠'} {inviteMsg.type === 'success' ? `Invite sent to ${inviteEmail || 'employee'}.` : inviteMsg.text}
-                {inviteMsg.link && (
-                  <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input readOnly value={inviteMsg.link} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', fontFamily: 'monospace', background: 'var(--surface2)' }} onClick={e => e.target.select()} />
-                    <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => navigator.clipboard.writeText(inviteMsg.link)}>Copy Link</button>
-                  </div>
-                )}
+                {inviteMsg.type === 'success' ? 'Success: ' : 'Error: '} {inviteMsg.text}
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{ padding: 28, marginBottom: 24 }}>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 18 }}>Company Overview</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}>
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
+                <div style={{ color: 'var(--text2)', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Company</div>
+                <div style={{ fontWeight: 700, marginTop: 8 }}>{selectedCompany?.name}</div>
+              </div>
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
+                <div style={{ color: 'var(--text2)', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Employees</div>
+                <div style={{ fontWeight: 800, fontSize: '1.45rem', marginTop: 8 }}>{statsLoading ? '-' : companyStats.employees}</div>
+              </div>
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
+                <div style={{ color: 'var(--text2)', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Reviews</div>
+                <div style={{ fontWeight: 800, fontSize: '1.45rem', marginTop: 8 }}>{statsLoading ? '-' : companyStats.reviews}</div>
+              </div>
+            </div>
+            {pendingInvites.length > 0 && (
+              <div style={{ marginTop: 22 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>Pending Invites</div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {pendingInvites.map(invite => (
+                    <div key={invite.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.86rem' }}>
+                      <span>{invite.email}</span>
+                      <span style={{ color: 'var(--text2)' }}>{invite.expires_at ? `Expires ${new Date(invite.expires_at).toLocaleString()}` : 'Pending'}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1210,7 +1248,12 @@ export default function Admin() {
         {renderSidebar()}
         <div className="wizard-main" style={{ flex: 1, padding: 48, overflowY: 'auto' }}>
           <div className="step-header">
-            <div className="step-badge">Step {currentStep} of {STEPS.length}</div>
+            <div className="step-badge">
+              Step {currentStep} of {STEPS.length}
+              {draftSaveState === 'saving' && ' - Saving...'}
+              {draftSaveState === 'saved' && ' - Saved'}
+              {draftSaveState === 'error' && ' - Save failed'}
+            </div>
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: `${pct}%` }} />
             </div>
